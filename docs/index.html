@@ -444,11 +444,12 @@ if (sessionStorage.getItem(SESSION_KEY) === "1") {
 async function loadDashboard() {
   const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  const [{ data: holdings }, { data: watchlist }, { data: snapshots }, { data: analysis }, { data: portfolioSummaries }, { data: trades }] =
+  const [{ data: holdings }, { data: watchlist }, { data: snapshots }, { data: intraday }, { data: analysis }, { data: portfolioSummaries }, { data: trades }] =
     await Promise.all([
       client.from("holdings").select("*").order("ticker"),
       client.from("watchlist").select("*").order("ticker"),
       client.from("daily_snapshots").select("*").order("date", { ascending: false }),
+      client.from("intraday_snapshots").select("*").order("ts", { ascending: false }).limit(2000),
       client.from("daily_analysis").select("*").order("date", { ascending: false }),
       client.from("portfolio_analysis").select("*").order("date", { ascending: false }).limit(30),
       client.from("trades").select("*").order("sell_date", { ascending: false }),
@@ -474,7 +475,7 @@ async function loadDashboard() {
   const holdingTickers = (holdings || []).map((r) => r.ticker);
   const trackedTickers = [...(holdings || []), ...(watchlist || [])].map((r) => r.ticker);
 
-  renderPortfolioChart(holdings || [], snapshots || []);
+  renderPortfolioChart(holdings || [], snapshots || [], intraday || []);
   renderWarnBanner(holdingTickers, analysisHistory);
   renderPortfolioSummary(portfolioSummaries || []);
   renderSignalChanges(trackedTickers, analysisHistory);
@@ -526,7 +527,19 @@ function renderWarnBanner(tickers, analysisHistory) {
   `;
 }
 
-function renderPortfolioChart(holdings, snapshots) {
+function portfolioValueAt(qtyByTicker, prices) {
+  let value = 0;
+  let coveredTickers = 0;
+  for (const ticker in qtyByTicker) {
+    if (ticker in prices) {
+      value += prices[ticker] * qtyByTicker[ticker];
+      coveredTickers += 1;
+    }
+  }
+  return { value, coverage: coveredTickers / Object.keys(qtyByTicker).length };
+}
+
+function renderPortfolioChart(holdings, snapshots, intraday) {
   const el = document.getElementById("portfolio-chart");
   if (holdings.length === 0) {
     el.innerHTML = "";
@@ -542,21 +555,40 @@ function renderPortfolioChart(holdings, snapshots) {
     (byDate[s.date] ??= {})[s.ticker] = s.price;
   }
 
-  const points = Object.keys(byDate)
+  const dailyPoints = Object.keys(byDate)
     .sort()
     .map((date) => {
-      const prices = byDate[date];
-      let value = 0;
-      let coveredTickers = 0;
-      for (const ticker in qtyByTicker) {
-        if (ticker in prices) {
-          value += prices[ticker] * qtyByTicker[ticker];
-          coveredTickers += 1;
-        }
-      }
-      return { date, value, coverage: coveredTickers / Object.keys(qtyByTicker).length };
+      const { value, coverage } = portfolioValueAt(qtyByTicker, byDate[date]);
+      return { x: date, label: date, value, coverage };
     })
     .filter((p) => p.coverage > 0);
+
+  // intraday rows for the most recent trading day give finer-grained points
+  // than the one-per-day daily_snapshots history, so swap that last day out
+  // for its intraday series when we have one.
+  const relevantIntraday = (intraday || []).filter((r) => r.ticker in qtyByTicker);
+  let intradayPoints = [];
+  if (relevantIntraday.length > 0) {
+    const latestDate = relevantIntraday.reduce((max, r) => (r.ts > max ? r.ts : max), relevantIntraday[0].ts).slice(0, 10);
+    const byTs = {};
+    for (const r of relevantIntraday) {
+      if (!r.ts.startsWith(latestDate)) continue;
+      (byTs[r.ts] ??= {})[r.ticker] = r.price;
+    }
+    intradayPoints = Object.keys(byTs)
+      .sort()
+      .map((ts) => {
+        const { value, coverage } = portfolioValueAt(qtyByTicker, byTs[ts]);
+        const time = new Date(ts).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+        return { x: ts, label: `${latestDate} ${time}`, value, coverage, date: latestDate };
+      })
+      .filter((p) => p.coverage > 0);
+  }
+
+  const points = [
+    ...dailyPoints.filter((p) => intradayPoints.length === 0 || p.x !== intradayPoints[0].date),
+    ...intradayPoints,
+  ];
 
   if (points.length < 2) {
     el.innerHTML = `
@@ -571,36 +603,57 @@ function renderPortfolioChart(holdings, snapshots) {
   const values = points.map((p) => p.value);
   const min = Math.min(...values);
   const max = Math.max(...values);
-  const w = 600, h = 160, pad = 12;
+  const w = 640, h = 180, padL = 58, padR = 12, padY = 12;
   const range = max - min || 1;
-  const stepX = points.length > 1 ? (w - pad * 2) / (points.length - 1) : 0;
+  const plotW = w - padL - padR;
+  const stepX = points.length > 1 ? plotW / (points.length - 1) : 0;
 
   const coords = points.map((p, i) => {
-    const x = pad + i * stepX;
-    const y = pad + (1 - (p.value - min) / range) * (h - pad * 2);
-    return { x, y, value: p.value, date: p.date };
+    const x = padL + i * stepX;
+    const y = padY + (1 - (p.value - min) / range) * (h - padY * 2);
+    return { x, y, value: p.value, label: p.label };
   });
 
   const pathD = coords.map((c, i) => `${i === 0 ? "M" : "L"} ${c.x.toFixed(1)} ${c.y.toFixed(1)}`).join(" ");
-  const areaD = `${pathD} L ${coords[coords.length - 1].x.toFixed(1)} ${h - pad} L ${coords[0].x.toFixed(1)} ${h - pad} Z`;
+  const areaD = `${pathD} L ${coords[coords.length - 1].x.toFixed(1)} ${h - padY} L ${coords[0].x.toFixed(1)} ${h - padY} Z`;
 
   const first = values[0];
   const last = values[values.length - 1];
   const changePct = first > 0 ? ((last - first) / first) * 100 : 0;
   const color = last >= first ? "var(--up)" : "var(--down)";
 
+  const gridCount = 4;
+  const gridLines = Array.from({ length: gridCount + 1 }, (_, i) => {
+    const t = i / gridCount;
+    const value = max - t * range;
+    const y = padY + t * (h - padY * 2);
+    return { y, value };
+  });
+
+  const rangeLabel = intradayPoints.length > 0
+    ? `${points[0].label} ~ ${intradayPoints[intradayPoints.length - 1].label}`
+    : `${points[0].label} ~ ${points[points.length - 1].label}`;
+
   el.innerHTML = `
     <div class="chart-wrap">
-      <div class="chart-label">📈 포트폴리오 가치 추이 · ${points[0].date} ~ ${points[points.length - 1].date}</div>
+      <div class="chart-label">📈 포트폴리오 가치 추이 · ${rangeLabel}</div>
       <div class="value ${toneClass(last - first)}" style="font-size:20px;">$${fmt(last)} <span style="font-size:13px; font-weight:600;">(${fmtPct(changePct)})</span></div>
       <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+        ${gridLines
+          .map(
+            (g) => `
+          <line x1="${padL}" y1="${g.y.toFixed(1)}" x2="${w - padR}" y2="${g.y.toFixed(1)}" stroke="var(--border)" stroke-width="1" />
+          <text x="${(padL - 6).toFixed(1)}" y="${(g.y + 3).toFixed(1)}" text-anchor="end" font-size="10" fill="var(--muted)">$${fmt(Math.round(g.value))}</text>
+        `
+          )
+          .join("")}
         <path d="${areaD}" fill="${color}" opacity="0.08" stroke="none" />
         <path d="${pathD}" fill="none" stroke="${color}" stroke-width="2" />
         ${coords
           .map((c, i) => (i === 0 || i === coords.length - 1 ? `<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="3" fill="${color}" />` : ""))
           .join("")}
       </svg>
-      <div class="chart-note">현재 보유 수량 기준으로 과거 가격을 소급 계산한 값입니다 (데이터가 있는 날만 반영, 보유 시작일 이전 변화는 미반영).</div>
+      <div class="chart-note">현재 보유 수량 기준으로 과거 가격을 소급 계산한 값입니다 (일별 데이터 + 오늘은 10분 단위, 보유 시작일 이전 변화는 미반영).</div>
     </div>
   `;
 }

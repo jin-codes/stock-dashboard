@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
-"""Fetch latest prices for every holdings/watchlist ticker via yfinance and
-upsert them into daily_snapshots. Prints a JSON summary to stdout so a Claude
-Code session running the daily workflow can read the results directly.
+"""Fetch latest prices for every holdings/watchlist ticker via yfinance,
+upsert them into daily_snapshots (one row per ticker/day), and append them to
+intraday_snapshots (one row per fetch) so the dashboard chart can show
+intraday movement. Prints a JSON summary to stdout so a Claude Code session
+running the daily workflow can read the results directly.
 """
 import json
 import sys
+from datetime import datetime, timedelta, timezone
 
 import yfinance as yf
 
 from lib.db import get_client
+
+INTRADAY_RETENTION_DAYS = 14
 
 
 def get_tickers(client):
@@ -52,6 +57,11 @@ def main():
         print("holdings/watchlist에 티커가 없습니다.", file=sys.stderr)
         return
 
+    # Shared timestamp for this whole run, so every ticker's intraday row
+    # lands in the same bucket and the dashboard chart can group them into
+    # one portfolio-value point instead of one point per ticker per fetch.
+    run_ts = datetime.now(timezone.utc).isoformat()
+
     results = []
     for ticker in tickers:
         try:
@@ -64,9 +74,19 @@ def main():
             continue
 
         client.table("daily_snapshots").upsert(snap, on_conflict="ticker,date").execute()
+        client.table("intraday_snapshots").insert({
+            "ticker": snap["ticker"],
+            "ts": run_ts,
+            "price": snap["price"],
+            "change_pct": snap["change_pct"],
+            "volume": snap["volume"],
+        }).execute()
         results.append(snap)
         pct = f"{snap['change_pct']}%" if snap["change_pct"] is not None else "-"
         print(f"  {snap['ticker']}: {snap['price']} ({pct})", file=sys.stderr)
+
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=INTRADAY_RETENTION_DAYS)).isoformat()
+    client.table("intraday_snapshots").delete().lt("ts", cutoff).execute()
 
     print(json.dumps(results, indent=2, ensure_ascii=False))
 

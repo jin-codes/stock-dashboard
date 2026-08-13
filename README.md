@@ -12,8 +12,12 @@
   - `0003_portfolio_analysis.sql`: `portfolio_analysis` (포트폴리오 전체 요약)
   - `0004_expand_signals.sql`: signal 9종으로 확장
   - `0005_trades.sql`: `trades` (매도 이력/실현손익)
+  - `0006_split_chase_signal.sql`: 추격매수금지 신호를 보유/관심 종목용으로 분리
+  - `0007_intraday_snapshots.sql`: `intraday_snapshots` (10분 단위 시세 이력,
+    대시보드 당일 차트용)
 - `scripts/` — Python 스크립트
-  - `fetch_prices.py` — yfinance로 시세 수집, `daily_snapshots`에 저장
+  - `fetch_prices.py` — yfinance로 시세 수집, `daily_snapshots`(일별)와
+    `intraday_snapshots`(10분 단위 이력)에 저장
   - `portfolio.py` — holdings/watchlist/daily_analysis/trades 조회 및 CRUD CLI
   - `save_analysis.py` — `daily_analysis` upsert
   - `save_portfolio_summary.py` — `portfolio_analysis` upsert
