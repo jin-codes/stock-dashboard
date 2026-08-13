@@ -9,15 +9,21 @@
 - `supabase/migrations/` — DB 스키마
   - `0001_init.sql`: `holdings`, `watchlist`, `daily_snapshots`
   - `0002_daily_analysis.sql`: `daily_analysis` (매일 분석 결과)
+  - `0003_portfolio_analysis.sql`: `portfolio_analysis` (포트폴리오 전체 요약)
+  - `0004_expand_signals.sql`: signal 9종으로 확장
+  - `0005_trades.sql`: `trades` (매도 이력/실현손익)
 - `scripts/` — Python 스크립트
   - `fetch_prices.py` — yfinance로 시세 수집, `daily_snapshots`에 저장
-  - `portfolio.py` — holdings/watchlist/daily_analysis 조회 및 CRUD CLI
+  - `portfolio.py` — holdings/watchlist/daily_analysis/trades 조회 및 CRUD CLI
   - `save_analysis.py` — `daily_analysis` upsert
+  - `save_portfolio_summary.py` — `portfolio_analysis` upsert
   - `lib/db.py` — service role 키로 Supabase 연결하는 공용 클라이언트
 - `DAILY_ANALYSIS.md` — 매일 분석 워크플로 절차 (Claude Code가 따라 실행)
+- `INVESTMENT_PROFILE.md` — 리스크 성향/투자 기간 등 분석 기준 (매번 재입력 불필요)
 - `.claude/commands/daily-analysis.md` — 위 워크플로를 `/daily-analysis`로
   대화형 세션에서 바로 실행할 수 있는 슬래시 커맨드
 - `.github/workflows/daily-analysis.yml` — 매일 07:00 KST 자동 실행
+- `docs/index.html` — GitHub Pages로 배포되는 읽기 전용 대시보드
 
 ## 로컬 설정
 
@@ -38,6 +44,8 @@ cp .env.local.example .env.local  # SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 채
 python scripts/portfolio.py holdings list
 python scripts/portfolio.py holdings add AAPL --quantity 10 --avg-cost 150 --first-buy-date 2024-01-01 --thesis "..."
 python scripts/portfolio.py watchlist add NVDA --target-price 900 --thesis "..."
+python scripts/portfolio.py holdings sell AAPL --quantity 4 --price 227.5 --note "부분 익절"
+python scripts/portfolio.py trades list
 
 # 시세만 수집
 python scripts/fetch_prices.py

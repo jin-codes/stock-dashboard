@@ -266,6 +266,22 @@
     font-weight: 400;
   }
 
+  .trade-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    background: var(--card);
+  }
+  .trade-row .tr-ticker { font-weight: 700; }
+  .trade-row .tr-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .trade-row .tr-pnl { text-align: right; font-weight: 600; }
+  .trade-row .tr-pnl-pct { text-align: right; font-size: 12px; }
+
   footer { text-align: center; padding: 24px; color: var(--muted); font-size: 12px; }
 </style>
 </head>
@@ -294,6 +310,11 @@
   <section>
     <h2>관심 종목</h2>
     <div id="watchlist"></div>
+  </section>
+
+  <section>
+    <h2>매매 이력 (실현손익)</h2>
+    <div id="trades"></div>
   </section>
 </main>
 
@@ -372,13 +393,14 @@ if (sessionStorage.getItem(SESSION_KEY) === "1") {
 async function loadDashboard() {
   const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  const [{ data: holdings }, { data: watchlist }, { data: snapshots }, { data: analysis }, { data: portfolioSummaries }] =
+  const [{ data: holdings }, { data: watchlist }, { data: snapshots }, { data: analysis }, { data: portfolioSummaries }, { data: trades }] =
     await Promise.all([
       client.from("holdings").select("*").order("ticker"),
       client.from("watchlist").select("*").order("ticker"),
       client.from("daily_snapshots").select("*").order("date", { ascending: false }),
       client.from("daily_analysis").select("*").order("date", { ascending: false }),
       client.from("portfolio_analysis").select("*").order("date", { ascending: false }).limit(30),
+      client.from("trades").select("*").order("sell_date", { ascending: false }),
     ]);
 
   const latestByTicker = (rows) => {
@@ -402,9 +424,10 @@ async function loadDashboard() {
 
   renderPortfolioSummary(portfolioSummaries || []);
   renderSignalChanges(trackedTickers, analysisHistory);
-  renderCards(holdings || [], latestSnapshot);
+  renderCards(holdings || [], latestSnapshot, trades || []);
   renderHoldings(holdings || [], latestSnapshot, analysisHistory);
   renderWatchlist(watchlist || [], latestSnapshot, analysisHistory);
+  renderTrades(trades || []);
 }
 
 function signalChanged(ticker, analysisHistory) {
@@ -472,7 +495,7 @@ function renderPortfolioSummary(summaries) {
   `;
 }
 
-function renderCards(holdings, latestSnapshot) {
+function renderCards(holdings, latestSnapshot, trades) {
   const rows = holdings.map((h) => {
     const snap = latestSnapshot[h.ticker];
     const price = snap ? snap.price : h.avg_cost;
@@ -502,6 +525,8 @@ function renderCards(holdings, latestSnapshot) {
     ? movers.reduce((a, b) => (a.changePct < b.changePct ? a : b))
     : null;
 
+  const totalRealizedPnl = trades.reduce((s, t) => s + t.realized_pnl, 0);
+
   const cards = document.getElementById("cards");
   cards.innerHTML = `
     <div class="card">
@@ -514,9 +539,14 @@ function renderCards(holdings, latestSnapshot) {
       <div class="subvalue ${toneClass(totalTodayPnl)}">${fmtPct(totalTodayPnlPct)}</div>
     </div>
     <div class="card">
-      <div class="label">평가 손익</div>
+      <div class="label">평가 손익 (미실현)</div>
       <div class="value ${toneClass(totalPnl)}">${fmtSigned(totalPnl)}</div>
       <div class="subvalue ${toneClass(totalPnl)}">${fmtPct(totalPnlPct)}</div>
+    </div>
+    <div class="card">
+      <div class="label">실현 손익</div>
+      <div class="value ${toneClass(totalRealizedPnl)}">${fmtSigned(totalRealizedPnl)}</div>
+      <div class="subvalue">누적 매도 ${trades.length}건</div>
     </div>
     <div class="card">
       <div class="label">오늘 상승 상위</div>
@@ -650,6 +680,31 @@ function renderWatchlist(watchlist, latestSnapshot, analysisHistory) {
             </div>
           </div>
           ${analysisSection(w.ticker, analysisHistory)}
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function renderTrades(trades) {
+  const el = document.getElementById("trades");
+  if (trades.length === 0) {
+    el.innerHTML = `<p class="empty">매도 이력이 없습니다</p>`;
+    return;
+  }
+  el.innerHTML = trades
+    .map((t) => {
+      const pnlPct = t.cost_basis > 0 ? ((t.sell_price - t.cost_basis) / t.cost_basis) * 100 : null;
+      return `
+        <div class="trade-row">
+          <div>
+            <div class="tr-ticker">${t.ticker}</div>
+            <div class="tr-sub">${t.sell_date} · ${t.quantity}주 · ${fmt(t.cost_basis)} → ${fmt(t.sell_price)}${t.note ? ` · ${t.note}` : ""}</div>
+          </div>
+          <div>
+            <div class="tr-pnl ${toneClass(t.realized_pnl)}">${fmtSigned(t.realized_pnl)}</div>
+            ${pnlPct !== null ? `<div class="tr-pnl-pct ${toneClass(pnlPct)}">${fmtPct(pnlPct)}</div>` : ""}
+          </div>
         </div>
       `;
     })

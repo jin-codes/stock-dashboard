@@ -8,6 +8,7 @@ Examples:
   python scripts/portfolio.py holdings add AAPL --quantity 10 --avg-cost 150 --first-buy-date 2024-01-01 --thesis "..."
   python scripts/portfolio.py holdings update AAPL --quantity 12
   python scripts/portfolio.py holdings delete AAPL
+  python scripts/portfolio.py holdings sell AAPL --quantity 4 --price 227.5 [--date 2026-08-13] [--note "..."]
 
   python scripts/portfolio.py watchlist list
   python scripts/portfolio.py watchlist add NVDA --target-price 900 --thesis "..."
@@ -15,12 +16,17 @@ Examples:
   python scripts/portfolio.py watchlist delete NVDA
 
   python scripts/portfolio.py analysis list [--ticker AAPL] [--date 2026-08-13] [--limit 20]
+
+  python scripts/portfolio.py trades list [--ticker AAPL] [--limit 20]
 """
 import argparse
+import datetime
 import json
 import sys
 
 from lib.db import get_client
+
+EPSILON = 1e-9
 
 
 def print_rows(rows):
@@ -65,6 +71,52 @@ def cmd_holdings_delete(client, args):
     print_rows(client.table("holdings").delete().eq("ticker", args.ticker.upper()).execute().data)
 
 
+def cmd_holdings_sell(client, args):
+    ticker = args.ticker.upper()
+    holding = (
+        client.table("holdings").select("*").eq("ticker", ticker).limit(1).execute().data
+    )
+    if not holding:
+        print(f"{ticker}는 보유 종목이 아닙니다", file=sys.stderr)
+        sys.exit(1)
+    holding = holding[0]
+
+    if args.quantity > holding["quantity"] + EPSILON:
+        print(
+            f"매도 수량({args.quantity})이 보유 수량({holding['quantity']})보다 많습니다",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    sell_date = args.date or datetime.date.today().isoformat()
+    trade_row = {
+        "ticker": ticker,
+        "quantity": args.quantity,
+        "sell_price": args.price,
+        "cost_basis": holding["avg_cost"],
+        "sell_date": sell_date,
+    }
+    if args.note is not None:
+        trade_row["note"] = args.note
+
+    trade_result = client.table("trades").insert(trade_row).execute()
+
+    remaining = holding["quantity"] - args.quantity
+    if remaining <= EPSILON:
+        holding_result = client.table("holdings").delete().eq("ticker", ticker).execute()
+        status = "전량 매도, holdings에서 제거됨"
+    else:
+        holding_result = (
+            client.table("holdings")
+            .update({"quantity": remaining})
+            .eq("ticker", ticker)
+            .execute()
+        )
+        status = f"부분 매도, 잔여 수량 {remaining}"
+
+    print(json.dumps({"trade": trade_result.data, "status": status}, indent=2, ensure_ascii=False, default=str))
+
+
 def cmd_watchlist_list(client, args):
     print_rows(client.table("watchlist").select("*").order("ticker").execute().data)
 
@@ -106,6 +158,17 @@ def cmd_analysis_list(client, args):
     print_rows(query.execute().data)
 
 
+def cmd_trades_list(client, args):
+    query = client.table("trades").select("*")
+    if args.ticker:
+        query = query.eq("ticker", args.ticker.upper())
+    query = query.order("sell_date", desc=True).limit(args.limit)
+    rows = query.execute().data
+    total_realized = sum(r["realized_pnl"] for r in rows)
+    print_rows(rows)
+    print(f"\n총 실현손익 (표시된 {len(rows)}건 기준): {total_realized:+.2f}", file=sys.stderr)
+
+
 def build_parser():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="entity", required=True)
@@ -134,6 +197,14 @@ def build_parser():
     p.add_argument("ticker")
     p.set_defaults(func=cmd_holdings_delete)
 
+    p = holdings_sub.add_parser("sell")
+    p.add_argument("ticker")
+    p.add_argument("--quantity", type=float, required=True)
+    p.add_argument("--price", type=float, required=True)
+    p.add_argument("--date", help="YYYY-MM-DD, 기본값 오늘")
+    p.add_argument("--note")
+    p.set_defaults(func=cmd_holdings_sell)
+
     watchlist = sub.add_parser("watchlist")
     watchlist_sub = watchlist.add_subparsers(dest="action", required=True)
     watchlist_sub.add_parser("list").set_defaults(func=cmd_watchlist_list)
@@ -161,6 +232,13 @@ def build_parser():
     p.add_argument("--date", help="YYYY-MM-DD")
     p.add_argument("--limit", type=int, default=20)
     p.set_defaults(func=cmd_analysis_list)
+
+    trades = sub.add_parser("trades")
+    trades_sub = trades.add_subparsers(dest="action", required=True)
+    p = trades_sub.add_parser("list")
+    p.add_argument("--ticker")
+    p.add_argument("--limit", type=int, default=20)
+    p.set_defaults(func=cmd_trades_list)
 
     return parser
 
