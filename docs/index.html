@@ -407,6 +407,7 @@ const SIGNAL_META = {
   "관찰필요": { emoji: "🟡", cls: "signal-watch" },
   "비중축소": { emoji: "✂️", cls: "signal-trim" },
   "추격매수금지": { emoji: "🟠", cls: "signal-block" },
+  "매수보류": { emoji: "🟠", cls: "signal-block" },
   "매도": { emoji: "🔴", cls: "signal-sell" },
   "긴급매도": { emoji: "🚨", cls: "signal-urgent" },
   "관심제외": { emoji: "🗑️", cls: "signal-remove" },
@@ -470,10 +471,11 @@ async function loadDashboard() {
 
   const latestSnapshot = latestByTicker(snapshots);
   const analysisHistory = historyByTicker(analysis);
+  const holdingTickers = (holdings || []).map((r) => r.ticker);
   const trackedTickers = [...(holdings || []), ...(watchlist || [])].map((r) => r.ticker);
 
   renderPortfolioChart(holdings || [], snapshots || []);
-  renderWarnBanner(trackedTickers, analysisHistory);
+  renderWarnBanner(holdingTickers, analysisHistory);
   renderPortfolioSummary(portfolioSummaries || []);
   renderSignalChanges(trackedTickers, analysisHistory);
   renderCards(holdings || [], latestSnapshot, trades || []);
