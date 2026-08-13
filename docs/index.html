@@ -220,6 +220,52 @@
     color: var(--muted);
     margin-bottom: 6px;
   }
+
+  .signal-changes {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    background: var(--card);
+    margin-bottom: 24px;
+  }
+  .signal-changes .sc-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .sc-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 13px;
+    flex-wrap: wrap;
+  }
+  .sc-item .sc-ticker { font-weight: 700; min-width: 56px; }
+  .sc-arrow { color: var(--muted); }
+
+  .target-hit {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid #16a34a;
+    color: #16a34a;
+    background: rgba(22,163,74,0.1);
+    margin-top: 2px;
+  }
+  @media (prefers-color-scheme: dark) {
+    .target-hit { border-color: #4ade80; color: #4ade80; background: rgba(74,222,128,0.12); }
+  }
+
+  .changed-tag {
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 400;
+  }
+
   footer { text-align: center; padding: 24px; color: var(--muted); font-size: 12px; }
 </style>
 </head>
@@ -237,6 +283,7 @@
 <main id="app">
   <h1 class="title">포트폴리오 대시보드</h1>
   <div id="portfolio-summary"></div>
+  <div id="signal-changes"></div>
   <div class="cards" id="cards"></div>
 
   <section>
@@ -351,11 +398,51 @@ async function loadDashboard() {
 
   const latestSnapshot = latestByTicker(snapshots);
   const analysisHistory = historyByTicker(analysis);
+  const trackedTickers = [...(holdings || []), ...(watchlist || [])].map((r) => r.ticker);
 
   renderPortfolioSummary(portfolioSummaries || []);
+  renderSignalChanges(trackedTickers, analysisHistory);
   renderCards(holdings || [], latestSnapshot);
   renderHoldings(holdings || [], latestSnapshot, analysisHistory);
   renderWatchlist(watchlist || [], latestSnapshot, analysisHistory);
+}
+
+function signalChanged(ticker, analysisHistory) {
+  const hist = analysisHistory[ticker] || [];
+  if (hist.length < 2) return null;
+  const [latest, prev] = hist;
+  if (latest.signal === prev.signal) return null;
+  return { latest, prev };
+}
+
+function renderSignalChanges(tickers, analysisHistory) {
+  const el = document.getElementById("signal-changes");
+  const changes = tickers
+    .map((t) => ({ ticker: t, change: signalChanged(t, analysisHistory) }))
+    .filter((c) => c.change);
+
+  if (changes.length === 0) {
+    el.innerHTML = "";
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="signal-changes">
+      <div class="sc-label">🔁 오늘 바뀐 신호 (${changes.length})</div>
+      ${changes
+        .map(
+          ({ ticker, change }) => `
+        <div class="sc-item">
+          <span class="sc-ticker">${ticker}</span>
+          ${signalBadge(change.prev.signal)}
+          <span class="sc-arrow">→</span>
+          ${signalBadge(change.latest.signal)}
+        </div>
+      `
+        )
+        .join("")}
+    </div>
+  `;
 }
 
 function renderPortfolioSummary(summaries) {
@@ -448,12 +535,13 @@ function analysisSection(ticker, analysisHistory) {
     return `<div class="analysis-block"><div class="no-analysis">아직 분석 결과가 없습니다</div></div>`;
   }
   const [latest, ...rest] = hist;
+  const changed = signalChanged(ticker, analysisHistory);
   historySeq += 1;
   const historyId = `hist-${ticker}-${historySeq}`;
   return `
     <div class="analysis-block">
       <div class="analysis-head">
-        ${signalBadge(latest.signal)}
+        <span>${signalBadge(latest.signal)}${changed ? ` <span class="changed-tag">(어제: ${changed.prev.signal})</span>` : ""}</span>
         <span class="analysis-date">${latest.date}</span>
       </div>
       ${latest.reasoning ? `<div class="reasoning">${latest.reasoning}</div>` : ""}
@@ -534,15 +622,30 @@ function renderWatchlist(watchlist, latestSnapshot, analysisHistory) {
   el.innerHTML = watchlist
     .map((w) => {
       const snap = latestSnapshot[w.ticker];
+      const price = snap ? snap.price : null;
+
+      let targetInfo = "목표가 미설정";
+      let targetHit = false;
+      if (w.target_price && price !== null) {
+        const diffPct = ((price - w.target_price) / w.target_price) * 100;
+        targetHit = price <= w.target_price;
+        targetInfo = targetHit
+          ? `목표가 ${fmt(w.target_price)}`
+          : `목표가 ${fmt(w.target_price)} · 목표가까지 +${diffPct.toFixed(1)}%`;
+      } else if (w.target_price) {
+        targetInfo = `목표가 ${fmt(w.target_price)}`;
+      }
+
       return `
         <div class="stock-card">
           <div class="stock-head">
             <div>
               <div class="ticker">${w.ticker}</div>
-              <div class="sub">${w.target_price ? `목표가 ${fmt(w.target_price)}` : "목표가 미설정"}</div>
+              <div class="sub">${targetInfo}</div>
+              ${targetHit ? `<div class="target-hit">🎯 목표가 도달</div>` : ""}
             </div>
             <div class="price-block">
-              <div class="price">${snap ? fmt(snap.price) : "-"}</div>
+              <div class="price">${price !== null ? fmt(price) : "-"}</div>
               <div class="pct ${toneClass(snap?.change_pct)}">${snap && snap.change_pct !== null ? fmtPct(snap.change_pct) : "데이터 없음"}</div>
             </div>
           </div>
