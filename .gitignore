@@ -12,5 +12,8 @@ __pycache__/
 # claude code local session settings (not shared config)
 .claude/settings.local.json
 
+# personal investment profile (contains individual risk tolerance/holdings bias)
+INVESTMENT_PROFILE.md
+
 # misc
 .DS_Store

@@ -19,7 +19,9 @@
   - `save_portfolio_summary.py` — `portfolio_analysis` upsert
   - `lib/db.py` — service role 키로 Supabase 연결하는 공용 클라이언트
 - `DAILY_ANALYSIS.md` — 매일 분석 워크플로 절차 (Claude Code가 따라 실행)
-- `INVESTMENT_PROFILE.md` — 리스크 성향/투자 기간 등 분석 기준 (매번 재입력 불필요)
+- `INVESTMENT_PROFILE.md` — 리스크 성향/투자 기간 등 분석 기준 (매번 재입력
+  불필요). 개인 투자 성향이 담겨 있어 `.gitignore` 처리됨 — 저장소에는
+  템플릿인 `INVESTMENT_PROFILE.md.example`만 포함
 - `.claude/commands/daily-analysis.md` — 위 워크플로를 `/daily-analysis`로
   대화형 세션에서 바로 실행할 수 있는 슬래시 커맨드
 - `.github/workflows/daily-analysis.yml` — 매일 07:00 KST 자동 실행
@@ -32,6 +34,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r scripts/requirements.txt
 cp .env.local.example .env.local  # SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 채우기
+cp INVESTMENT_PROFILE.md.example INVESTMENT_PROFILE.md  # 본인 투자 성향 채우기
 ```
 
 `SUPABASE_SERVICE_ROLE_KEY`는 RLS를 우회하는 키입니다. 절대 커밋하지 마세요

@@ -12,5 +12,8 @@ Python 스크립트 + Claude Code(대화형 또는 GitHub Actions 헤드리스) 
 - 매일 분석 절차는 `DAILY_ANALYSIS.md` 참고, 대화형 세션에서는
   `/daily-analysis`로 실행 가능
 - 종목 신호 판단 시 `INVESTMENT_PROFILE.md`(리스크 성향/투자 기간/집중도
-  기준)를 항상 반영할 것 — 사용자에게 매번 다시 물어보지 말 것
+  기준)가 있으면 항상 반영할 것 — 사용자에게 매번 다시 물어보지 말 것.
+  이 파일은 개인 투자 성향이 담겨 있어 `.gitignore`에 포함되며 저장소에는
+  `INVESTMENT_PROFILE.md.example`만 커밋됨 — 새로 세팅하는 사용자는 이
+  예시를 복사해서 본인 성향에 맞게 채울 것
 - `.env.local`은 절대 커밋하지 말 것 (service role key 포함)
