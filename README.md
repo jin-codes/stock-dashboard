@@ -66,6 +66,13 @@ python scripts/fetch_prices.py
 - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 - `CLAUDE_CODE_OAUTH_TOKEN` — 로컬에서 `claude setup-token`으로 발급 (구독
   크레딧으로 처리되며 별도 API 과금 없음)
+- `INVESTMENT_PROFILE_MD` (선택) — `INVESTMENT_PROFILE.md`는 개인 투자
+  성향이 담겨 있어 저장소에 커밋되지 않으므로, 자동 실행에서도 반영하려면
+  파일 내용을 그대로 이 secret에 등록하세요:
+  ```bash
+  gh secret set INVESTMENT_PROFILE_MD < INVESTMENT_PROFILE.md
+  ```
+  등록하지 않으면 워크플로는 이 파일 없이 중립적인 기준으로 분석합니다.
 
 워크플로는 `--dangerously-skip-permissions`로 실행됩니다 (헤드리스 CI라 승인
 프롬프트를 띄울 수 없음). 매 실행이 격리된 새 러너에서 이 저장소의 스크립트만

@@ -34,6 +34,12 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           EOF
 
+      - name: Write INVESTMENT_PROFILE.md
+        if: ${{ secrets.INVESTMENT_PROFILE_MD != '' }}
+        env:
+          INVESTMENT_PROFILE_MD: ${{ secrets.INVESTMENT_PROFILE_MD }}
+        run: printf '%s' "$INVESTMENT_PROFILE_MD" > INVESTMENT_PROFILE.md
+
       - name: Run daily analysis
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
