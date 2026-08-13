@@ -2,10 +2,13 @@ name: Fetch Prices
 
 on:
   schedule:
-    # every 30 min, 13:00-21:00 UTC (covers US pre-market through after-hours
+    # every 10 min, 13:00-21:00 UTC (covers US pre-market through after-hours
     # across both EDT/EST), Mon-Fri. Keeps daily_snapshots' "today" row fresh
     # throughout the trading day instead of only once at the daily analysis run.
-    - cron: "*/30 13-21 * * 1-5"
+    # 5 min is the GitHub Actions floor, but yfinance is an unofficial scrape
+    # of Yahoo Finance and can soft rate-limit very frequent callers, so 10
+    # min is the safer floor in practice.
+    - cron: "*/10 13-21 * * 1-5"
   workflow_dispatch: {}
 
 jobs:
