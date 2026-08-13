@@ -1,7 +1,12 @@
 # 일일 포트폴리오 분석 워크플로
 
 이 문서는 Claude Code가 (수동 실행이든 GitHub Actions 자동 실행이든) 매일
-따라야 할 절차입니다. 결과는 `daily_analysis` 테이블에 저장됩니다.
+따라야 할 절차입니다. 결과는 `daily_analysis`/`portfolio_analysis` 테이블에
+저장됩니다.
+
+**시작 전에 `INVESTMENT_PROFILE.md`를 반드시 읽고, 거기 적힌 리스크 성향/투자
+기간/집중도에 대한 태도를 신호 판단과 reasoning 톤에 그대로 반영하세요.**
+사용자에게 다시 물어볼 필요 없이 그 파일이 기준입니다.
 
 ## 절차
 
@@ -48,13 +53,27 @@
    구체적으로 쓰세요 (예: "3분기 매출 가이던스 상향 발표, thesis의 핵심인
    클라우드 매출 성장세 확인됨").
 
-6. **요약**
-   마지막에 오늘 처리한 전체 티커와 각각의 signal을 표로 간단히 정리해서
-   출력하세요.
+6. **포트폴리오 전체 분석**
+   개별 종목 signal과 별개로, 포트폴리오 전체를 보고 아래를 2~4문장으로
+   종합하세요:
+   - 오늘 전체적으로 어떤 흐름이었는지 (상승/하락 종목 비중, 주요 동인)
+   - `INVESTMENT_PROFILE.md`에서 요청한 대로, AI/반도체 테마 전반에 걸친
+     펀더멘털 훼손 신호가 있었다면 명시적으로 경고 (없으면 "특이 경고 없음"
+     이라고 명시)
+   - 오늘 신호들의 분포(예: 추격매수금지가 많으면 "단기 과열 구간" 등 해석)
+
+   ```
+   python scripts/save_portfolio_summary.py --date <오늘 날짜 YYYY-MM-DD> \
+     --summary "<2~4문장 요약>"
+   ```
+
+7. **요약**
+   마지막에 오늘 처리한 전체 티커와 각각의 signal, 그리고 포트폴리오 전체
+   요약을 표+텍스트로 간단히 정리해서 출력하세요.
 
 ## 참고
 
 - 스크립트는 `.env.local`의 `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY`로
   Supabase에 연결합니다 (RLS 우회, service role 전용).
-- `daily_analysis`는 `(ticker, date)` unique라 같은 날 재실행해도 upsert로
-  덮어씁니다 — 재실행이 안전합니다.
+- `daily_analysis`는 `(ticker, date)` unique, `portfolio_analysis`는 `date`
+  unique라 같은 날 재실행해도 upsert로 덮어씁니다 — 재실행이 안전합니다.

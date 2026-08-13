@@ -58,7 +58,7 @@
     font-size: 14px;
     margin-bottom: 12px;
   }
-  #gate button, .refresh-btn {
+  #gate button, .link-btn {
     width: 100%;
     padding: 10px 12px;
     border: none;
@@ -75,9 +75,9 @@
   h1.title { font-size: 22px; margin: 0 0 24px; }
   .cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: 12px;
-    margin-bottom: 32px;
+    margin-bottom: 24px;
   }
   .card {
     border: 1px solid var(--border);
@@ -86,7 +86,8 @@
     background: var(--card);
   }
   .card .label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-  .card .value { font-size: 18px; font-weight: 600; }
+  .card .value { font-size: 17px; font-weight: 600; }
+  .card .subvalue { font-size: 12px; color: var(--muted); margin-top: 2px; }
   .up { color: var(--up); }
   .down { color: var(--down); }
 
@@ -97,31 +98,120 @@
     color: var(--muted);
     margin: 0 0 10px;
   }
-  .row {
+
+  .stock-card {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    background: var(--card);
+  }
+  .stock-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .stock-head .ticker { font-weight: 700; font-size: 15px; }
+  .stock-head .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .stock-head .price-block { text-align: right; }
+  .stock-head .price { font-weight: 600; }
+  .stock-head .pct { font-size: 12px; }
+
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .metrics .m-label { font-size: 11px; color: var(--muted); }
+  .metrics .m-value { font-size: 13px; font-weight: 600; margin-top: 1px; }
+
+  .analysis-block {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .analysis-head {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 12px;
-    padding: 12px 14px;
+    margin-bottom: 6px;
+  }
+  .analysis-date { font-size: 11px; color: var(--muted); }
+  .reasoning { font-size: 13px; color: var(--text); line-height: 1.55; }
+  .no-analysis { font-size: 12px; color: var(--muted); font-style: italic; }
+
+  .history-toggle {
+    margin-top: 10px;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+  }
+  .history-list { margin-top: 10px; display: none; }
+  .history-list.open { display: block; }
+  .history-item {
+    padding: 8px 0;
+    border-top: 1px dashed var(--border);
+    font-size: 12px;
+  }
+  .history-item .h-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  .history-item .h-date { color: var(--muted); }
+  .history-item .h-reasoning { color: var(--muted); line-height: 1.5; }
+
+  .signal {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 999px;
+    border: 1px solid;
+    white-space: nowrap;
+  }
+  .signal-add    { color: #16a34a; border-color: #16a34a; background: rgba(22,163,74,0.1); }
+  .signal-buy    { color: #2563eb; border-color: #2563eb; background: rgba(37,99,235,0.1); }
+  .signal-hold   { color: #71717a; border-color: #a1a1aa; background: rgba(113,113,122,0.1); }
+  .signal-block  { color: #d97706; border-color: #d97706; background: rgba(217,119,6,0.12); }
+  .signal-sell   { color: #dc2626; border-color: #dc2626; background: rgba(220,38,38,0.1); }
+  @media (prefers-color-scheme: dark) {
+    .signal-add   { color: #4ade80; border-color: #4ade80; background: rgba(74,222,128,0.12); }
+    .signal-buy   { color: #60a5fa; border-color: #60a5fa; background: rgba(96,165,250,0.12); }
+    .signal-hold  { color: #a1a1aa; border-color: #71717a; background: rgba(161,161,170,0.1); }
+    .signal-block { color: #fbbf24; border-color: #fbbf24; background: rgba(251,191,36,0.12); }
+    .signal-sell  { color: #f87171; border-color: #f87171; background: rgba(248,113,113,0.12); }
+  }
+
+  .empty { color: var(--muted); font-size: 13px; }
+
+  .portfolio-summary {
     border: 1px solid var(--border);
     border-radius: 10px;
-    margin-bottom: 8px;
+    padding: 16px;
     background: var(--card);
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text);
+    margin-bottom: 24px;
   }
-  .row .ticker { font-weight: 600; }
-  .row .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  .row .price { text-align: right; font-weight: 600; }
-  .row .pct { text-align: right; font-size: 12px; }
-  .signal {
-    display: inline-block;
+  .portfolio-summary .ps-label {
     font-size: 12px;
-    font-weight: 600;
-    padding: 2px 8px;
-    border-radius: 999px;
-    border: 1px solid var(--border);
+    font-weight: 700;
+    color: var(--muted);
+    margin-bottom: 6px;
   }
-  .empty { color: var(--muted); font-size: 13px; }
-  .reasoning { font-size: 13px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
   footer { text-align: center; padding: 24px; color: var(--muted); font-size: 12px; }
 </style>
 </head>
@@ -138,6 +228,7 @@
 
 <main id="app">
   <h1 class="title">포트폴리오 대시보드</h1>
+  <div id="portfolio-summary"></div>
   <div class="cards" id="cards"></div>
 
   <section>
@@ -148,11 +239,6 @@
   <section>
     <h2>관심 종목</h2>
     <div id="watchlist"></div>
-  </section>
-
-  <section>
-    <h2>최신 시그널</h2>
-    <div id="analysis"></div>
   </section>
 </main>
 
@@ -174,6 +260,10 @@ async function sha256Hex(text) {
 function fmt(n) {
   return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
 }
+function fmtSigned(n) {
+  const sign = n > 0 ? "+" : n < 0 ? "-" : "";
+  return `${sign}$${fmt(Math.abs(n))}`;
+}
 function fmtPct(n) {
   if (n === null || n === undefined) return null;
   const sign = n > 0 ? "+" : "";
@@ -183,6 +273,20 @@ function toneClass(n) {
   if (n === null || n === undefined) return "";
   return n >= 0 ? "up" : "down";
 }
+
+const SIGNAL_META = {
+  "추가매수": { emoji: "🟢", cls: "signal-add" },
+  "매수": { emoji: "🔵", cls: "signal-buy" },
+  "보유": { emoji: "⚪", cls: "signal-hold" },
+  "추격매수금지": { emoji: "🟠", cls: "signal-block" },
+  "매도": { emoji: "🔴", cls: "signal-sell" },
+};
+function signalBadge(signal) {
+  const meta = SIGNAL_META[signal] || { emoji: "⚪", cls: "signal-hold" };
+  return `<span class="signal ${meta.cls}">${meta.emoji} ${signal}</span>`;
+}
+
+let historySeq = 0;
 
 async function unlock() {
   document.getElementById("gate").style.display = "none";
@@ -209,12 +313,13 @@ if (sessionStorage.getItem(SESSION_KEY) === "1") {
 async function loadDashboard() {
   const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  const [{ data: holdings }, { data: watchlist }, { data: snapshots }, { data: analysis }] =
+  const [{ data: holdings }, { data: watchlist }, { data: snapshots }, { data: analysis }, { data: portfolioSummaries }] =
     await Promise.all([
       client.from("holdings").select("*").order("ticker"),
       client.from("watchlist").select("*").order("ticker"),
       client.from("daily_snapshots").select("*").order("date", { ascending: false }),
       client.from("daily_analysis").select("*").order("date", { ascending: false }),
+      client.from("portfolio_analysis").select("*").order("date", { ascending: false }).limit(30),
     ]);
 
   const latestByTicker = (rows) => {
@@ -224,32 +329,71 @@ async function loadDashboard() {
     }
     return map;
   };
+  const historyByTicker = (rows) => {
+    const map = {};
+    for (const row of rows || []) {
+      (map[row.ticker] ??= []).push(row);
+    }
+    return map;
+  };
 
   const latestSnapshot = latestByTicker(snapshots);
-  const latestAnalysis = latestByTicker(analysis);
+  const analysisHistory = historyByTicker(analysis);
 
+  renderPortfolioSummary(portfolioSummaries || []);
   renderCards(holdings || [], latestSnapshot);
-  renderHoldings(holdings || [], latestSnapshot);
-  renderWatchlist(watchlist || [], latestSnapshot);
-  renderAnalysis([...(holdings || []), ...(watchlist || [])], latestAnalysis);
+  renderHoldings(holdings || [], latestSnapshot, analysisHistory);
+  renderWatchlist(watchlist || [], latestSnapshot, analysisHistory);
+}
+
+function renderPortfolioSummary(summaries) {
+  const el = document.getElementById("portfolio-summary");
+  if (summaries.length === 0) {
+    el.innerHTML = "";
+    return;
+  }
+  const [latest, ...rest] = summaries;
+  const historyId = `ps-history`;
+  el.innerHTML = `
+    <div class="portfolio-summary">
+      <div class="ps-label">📊 포트폴리오 분석 · ${latest.date}</div>
+      <div>${latest.summary}</div>
+      ${rest.length > 0 ? `
+        <button class="history-toggle" onclick="document.getElementById('${historyId}').classList.toggle('open')">지난 분석 기록 보기 (${rest.length})</button>
+        <div class="history-list" id="${historyId}">
+          ${rest.map((s) => `
+            <div class="history-item">
+              <div class="h-head"><span class="h-date">${s.date}</span></div>
+              <div class="h-reasoning">${s.summary}</div>
+            </div>
+          `).join("")}
+        </div>
+      ` : ""}
+    </div>
+  `;
 }
 
 function renderCards(holdings, latestSnapshot) {
   const rows = holdings.map((h) => {
     const snap = latestSnapshot[h.ticker];
     const price = snap ? snap.price : h.avg_cost;
-    return {
-      ticker: h.ticker,
-      marketValue: price * h.quantity,
-      costBasis: h.avg_cost * h.quantity,
-      changePct: snap ? snap.change_pct : null,
-    };
+    const changePct = snap ? snap.change_pct : null;
+    const prevClose = changePct !== null && changePct !== undefined ? price / (1 + changePct / 100) : price;
+    const marketValue = price * h.quantity;
+    const costBasis = h.avg_cost * h.quantity;
+    const todayPnl = (price - prevClose) * h.quantity;
+    const prevMarketValue = prevClose * h.quantity;
+    return { ticker: h.ticker, marketValue, costBasis, changePct, todayPnl, prevMarketValue };
   });
 
   const totalValue = rows.reduce((s, r) => s + r.marketValue, 0);
   const totalCost = rows.reduce((s, r) => s + r.costBasis, 0);
   const totalPnl = totalValue - totalCost;
   const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
+
+  const totalTodayPnl = rows.reduce((s, r) => s + r.todayPnl, 0);
+  const totalPrevValue = rows.reduce((s, r) => s + r.prevMarketValue, 0);
+  const totalTodayPnlPct = totalPrevValue > 0 ? (totalTodayPnl / totalPrevValue) * 100 : 0;
 
   const movers = rows.filter((r) => r.changePct !== null);
   const topGainer = movers.length
@@ -266,8 +410,14 @@ function renderCards(holdings, latestSnapshot) {
       <div class="value">$${fmt(totalValue)}</div>
     </div>
     <div class="card">
-      <div class="label">총 손익</div>
-      <div class="value ${toneClass(totalPnl)}">${totalPnl >= 0 ? "+" : ""}$${fmt(totalPnl)} (${fmtPct(totalPnlPct)})</div>
+      <div class="label">오늘 손익</div>
+      <div class="value ${toneClass(totalTodayPnl)}">${fmtSigned(totalTodayPnl)}</div>
+      <div class="subvalue ${toneClass(totalTodayPnl)}">${fmtPct(totalTodayPnlPct)}</div>
+    </div>
+    <div class="card">
+      <div class="label">평가 손익</div>
+      <div class="value ${toneClass(totalPnl)}">${fmtSigned(totalPnl)}</div>
+      <div class="subvalue ${toneClass(totalPnl)}">${fmtPct(totalPnlPct)}</div>
     </div>
     <div class="card">
       <div class="label">오늘 상승 상위</div>
@@ -280,7 +430,37 @@ function renderCards(holdings, latestSnapshot) {
   `;
 }
 
-function renderHoldings(holdings, latestSnapshot) {
+function analysisSection(ticker, analysisHistory) {
+  const hist = analysisHistory[ticker] || [];
+  if (hist.length === 0) {
+    return `<div class="analysis-block"><div class="no-analysis">아직 분석 결과가 없습니다</div></div>`;
+  }
+  const [latest, ...rest] = hist;
+  historySeq += 1;
+  const historyId = `hist-${ticker}-${historySeq}`;
+  return `
+    <div class="analysis-block">
+      <div class="analysis-head">
+        ${signalBadge(latest.signal)}
+        <span class="analysis-date">${latest.date}</span>
+      </div>
+      ${latest.reasoning ? `<div class="reasoning">${latest.reasoning}</div>` : ""}
+      ${rest.length > 0 ? `
+        <button class="history-toggle" onclick="document.getElementById('${historyId}').classList.toggle('open')">지난 분석 기록 보기 (${rest.length})</button>
+        <div class="history-list" id="${historyId}">
+          ${rest.map((a) => `
+            <div class="history-item">
+              <div class="h-head">${signalBadge(a.signal)}<span class="h-date">${a.date}</span></div>
+              ${a.reasoning ? `<div class="h-reasoning">${a.reasoning}</div>` : ""}
+            </div>
+          `).join("")}
+        </div>
+      ` : ""}
+    </div>
+  `;
+}
+
+function renderHoldings(holdings, latestSnapshot, analysisHistory) {
   const el = document.getElementById("holdings");
   if (holdings.length === 0) {
     el.innerHTML = `<p class="empty">보유 종목이 없습니다</p>`;
@@ -289,23 +469,51 @@ function renderHoldings(holdings, latestSnapshot) {
   el.innerHTML = holdings
     .map((h) => {
       const snap = latestSnapshot[h.ticker];
+      const price = snap ? snap.price : null;
+      const changePct = snap ? snap.change_pct : null;
+      const hasPrice = price !== null && price !== undefined;
+
+      let todayPnl = null, todayPnlPct = null, totalPnl = null, totalPnlPct = null;
+      if (hasPrice) {
+        const prevClose = changePct !== null && changePct !== undefined ? price / (1 + changePct / 100) : price;
+        todayPnl = (price - prevClose) * h.quantity;
+        todayPnlPct = changePct;
+        totalPnl = (price - h.avg_cost) * h.quantity;
+        totalPnlPct = h.avg_cost > 0 ? ((price - h.avg_cost) / h.avg_cost) * 100 : null;
+      }
+
       return `
-        <div class="row">
-          <div>
-            <div class="ticker">${h.ticker}</div>
-            <div class="sub">${h.quantity}주 · 평단 ${fmt(h.avg_cost)}</div>
+        <div class="stock-card">
+          <div class="stock-head">
+            <div>
+              <div class="ticker">${h.ticker}</div>
+              <div class="sub">${h.quantity}주 · 평단 ${fmt(h.avg_cost)}</div>
+            </div>
+            <div class="price-block">
+              <div class="price">${hasPrice ? fmt(price) : "-"}</div>
+              <div class="pct ${toneClass(changePct)}">${changePct !== null && changePct !== undefined ? fmtPct(changePct) : "데이터 없음"}</div>
+            </div>
           </div>
-          <div>
-            <div class="price">${snap ? fmt(snap.price) : "-"}</div>
-            <div class="pct ${toneClass(snap?.change_pct)}">${snap && snap.change_pct !== null ? fmtPct(snap.change_pct) : "데이터 없음"}</div>
-          </div>
+          ${hasPrice ? `
+            <div class="metrics">
+              <div>
+                <div class="m-label">오늘 손익</div>
+                <div class="m-value ${toneClass(todayPnl)}">${fmtSigned(todayPnl)}</div>
+              </div>
+              <div>
+                <div class="m-label">평가 손익</div>
+                <div class="m-value ${toneClass(totalPnl)}">${fmtSigned(totalPnl)}${totalPnlPct !== null ? ` (${fmtPct(totalPnlPct)})` : ""}</div>
+              </div>
+            </div>
+          ` : ""}
+          ${analysisSection(h.ticker, analysisHistory)}
         </div>
       `;
     })
     .join("");
 }
 
-function renderWatchlist(watchlist, latestSnapshot) {
+function renderWatchlist(watchlist, latestSnapshot, analysisHistory) {
   const el = document.getElementById("watchlist");
   if (watchlist.length === 0) {
     el.innerHTML = `<p class="empty">관심 종목이 없습니다</p>`;
@@ -315,39 +523,18 @@ function renderWatchlist(watchlist, latestSnapshot) {
     .map((w) => {
       const snap = latestSnapshot[w.ticker];
       return `
-        <div class="row">
-          <div>
-            <div class="ticker">${w.ticker}</div>
-            <div class="sub">${w.target_price ? `목표가 ${fmt(w.target_price)}` : "목표가 미설정"}</div>
+        <div class="stock-card">
+          <div class="stock-head">
+            <div>
+              <div class="ticker">${w.ticker}</div>
+              <div class="sub">${w.target_price ? `목표가 ${fmt(w.target_price)}` : "목표가 미설정"}</div>
+            </div>
+            <div class="price-block">
+              <div class="price">${snap ? fmt(snap.price) : "-"}</div>
+              <div class="pct ${toneClass(snap?.change_pct)}">${snap && snap.change_pct !== null ? fmtPct(snap.change_pct) : "데이터 없음"}</div>
+            </div>
           </div>
-          <div>
-            <div class="price">${snap ? fmt(snap.price) : "-"}</div>
-            <div class="pct ${toneClass(snap?.change_pct)}">${snap && snap.change_pct !== null ? fmtPct(snap.change_pct) : "데이터 없음"}</div>
-          </div>
-        </div>
-      `;
-    })
-    .join("");
-}
-
-function renderAnalysis(tickers, latestAnalysis) {
-  const el = document.getElementById("analysis");
-  const rows = tickers.filter((t) => latestAnalysis[t.ticker]);
-  if (rows.length === 0) {
-    el.innerHTML = `<p class="empty">아직 분석 결과가 없습니다</p>`;
-    return;
-  }
-  el.innerHTML = rows
-    .map((t) => {
-      const a = latestAnalysis[t.ticker];
-      return `
-        <div class="row" style="flex-direction:column; align-items:stretch;">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div class="ticker">${a.ticker}</div>
-            <span class="signal">${a.signal}</span>
-          </div>
-          <div class="sub">${a.date} · ${fmt(a.price)}${a.change_pct !== null ? ` (${fmtPct(a.change_pct)})` : ""}</div>
-          ${a.reasoning ? `<div class="reasoning">${a.reasoning}</div>` : ""}
+          ${analysisSection(w.ticker, analysisHistory)}
         </div>
       `;
     })

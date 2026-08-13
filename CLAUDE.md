@@ -11,4 +11,6 @@ Python 스크립트 + Claude Code(대화형 또는 GitHub Actions 헤드리스) 
 - 포트폴리오 조회/수정 요청은 `scripts/portfolio.py` CLI로 처리
 - 매일 분석 절차는 `DAILY_ANALYSIS.md` 참고, 대화형 세션에서는
   `/daily-analysis`로 실행 가능
+- 종목 신호 판단 시 `INVESTMENT_PROFILE.md`(리스크 성향/투자 기간/집중도
+  기준)를 항상 반영할 것 — 사용자에게 매번 다시 물어보지 말 것
 - `.env.local`은 절대 커밋하지 말 것 (service role key 포함)
