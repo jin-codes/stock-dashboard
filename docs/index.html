@@ -184,14 +184,22 @@
   .signal-add    { color: #16a34a; border-color: #16a34a; background: rgba(22,163,74,0.1); }
   .signal-buy    { color: #2563eb; border-color: #2563eb; background: rgba(37,99,235,0.1); }
   .signal-hold   { color: #71717a; border-color: #a1a1aa; background: rgba(113,113,122,0.1); }
+  .signal-watch  { color: #ca8a04; border-color: #ca8a04; background: rgba(202,138,4,0.12); }
+  .signal-trim   { color: #0891b2; border-color: #0891b2; background: rgba(8,145,178,0.1); }
   .signal-block  { color: #d97706; border-color: #d97706; background: rgba(217,119,6,0.12); }
   .signal-sell   { color: #dc2626; border-color: #dc2626; background: rgba(220,38,38,0.1); }
+  .signal-urgent { color: #ffffff; border-color: #b91c1c; background: #b91c1c; }
+  .signal-remove { color: #71717a; border-color: var(--border); background: rgba(113,113,122,0.08); font-style: italic; }
   @media (prefers-color-scheme: dark) {
-    .signal-add   { color: #4ade80; border-color: #4ade80; background: rgba(74,222,128,0.12); }
-    .signal-buy   { color: #60a5fa; border-color: #60a5fa; background: rgba(96,165,250,0.12); }
-    .signal-hold  { color: #a1a1aa; border-color: #71717a; background: rgba(161,161,170,0.1); }
-    .signal-block { color: #fbbf24; border-color: #fbbf24; background: rgba(251,191,36,0.12); }
-    .signal-sell  { color: #f87171; border-color: #f87171; background: rgba(248,113,113,0.12); }
+    .signal-add    { color: #4ade80; border-color: #4ade80; background: rgba(74,222,128,0.12); }
+    .signal-buy    { color: #60a5fa; border-color: #60a5fa; background: rgba(96,165,250,0.12); }
+    .signal-hold   { color: #a1a1aa; border-color: #71717a; background: rgba(161,161,170,0.1); }
+    .signal-watch  { color: #fbbf24; border-color: #fbbf24; background: rgba(251,191,36,0.12); }
+    .signal-trim   { color: #22d3ee; border-color: #22d3ee; background: rgba(34,211,238,0.12); }
+    .signal-block  { color: #fbbf24; border-color: #fbbf24; background: rgba(251,191,36,0.12); }
+    .signal-sell   { color: #f87171; border-color: #f87171; background: rgba(248,113,113,0.12); }
+    .signal-urgent { color: #ffffff; border-color: #ef4444; background: #ef4444; }
+    .signal-remove { color: #a1a1aa; border-color: var(--border); background: rgba(161,161,170,0.08); font-style: italic; }
   }
 
   .empty { color: var(--muted); font-size: 13px; }
@@ -278,8 +286,12 @@ const SIGNAL_META = {
   "추가매수": { emoji: "🟢", cls: "signal-add" },
   "매수": { emoji: "🔵", cls: "signal-buy" },
   "보유": { emoji: "⚪", cls: "signal-hold" },
+  "관찰필요": { emoji: "🟡", cls: "signal-watch" },
+  "비중축소": { emoji: "✂️", cls: "signal-trim" },
   "추격매수금지": { emoji: "🟠", cls: "signal-block" },
   "매도": { emoji: "🔴", cls: "signal-sell" },
+  "긴급매도": { emoji: "🚨", cls: "signal-urgent" },
+  "관심제외": { emoji: "🗑️", cls: "signal-remove" },
 };
 function signalBadge(signal) {
   const meta = SIGNAL_META[signal] || { emoji: "⚪", cls: "signal-hold" };

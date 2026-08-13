@@ -11,7 +11,17 @@ import json
 
 from lib.db import get_client
 
-SIGNALS = ["보유", "추가매수", "추격매수금지", "매도", "매수"]
+SIGNALS = [
+    "추가매수",
+    "보유",
+    "관찰필요",
+    "비중축소",
+    "매도",
+    "긴급매도",
+    "매수",
+    "추격매수금지",
+    "관심제외",
+]
 
 
 def main():
