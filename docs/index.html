@@ -283,6 +283,54 @@
   .trade-row .tr-pnl-pct { text-align: right; font-size: 12px; }
 
   footer { text-align: center; padding: 24px; color: var(--muted); font-size: 12px; }
+
+  .warn-banner {
+    border: 1px solid #d97706;
+    border-radius: 10px;
+    padding: 14px 16px;
+    background: rgba(217,119,6,0.08);
+    margin-bottom: 24px;
+  }
+  .warn-banner .wb-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #d97706;
+    margin-bottom: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    .warn-banner { border-color: #fbbf24; background: rgba(251,191,36,0.08); }
+    .warn-banner .wb-label { color: #fbbf24; }
+  }
+  .wb-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    font-size: 13px;
+    flex-wrap: wrap;
+  }
+  .wb-item .wb-ticker { font-weight: 700; min-width: 56px; }
+  .wb-item .wb-reason { color: var(--muted); flex: 1; min-width: 200px; }
+
+  .chart-wrap {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    background: var(--card);
+    margin-bottom: 24px;
+  }
+  .chart-wrap .chart-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .chart-wrap .chart-note {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+  .chart-wrap svg { width: 100%; height: auto; display: block; }
 </style>
 </head>
 <body>
@@ -298,6 +346,8 @@
 
 <main id="app">
   <h1 class="title">포트폴리오 대시보드</h1>
+  <div id="portfolio-chart"></div>
+  <div id="warn-banner"></div>
   <div id="portfolio-summary"></div>
   <div id="signal-changes"></div>
   <div class="cards" id="cards"></div>
@@ -422,12 +472,135 @@ async function loadDashboard() {
   const analysisHistory = historyByTicker(analysis);
   const trackedTickers = [...(holdings || []), ...(watchlist || [])].map((r) => r.ticker);
 
+  renderPortfolioChart(holdings || [], snapshots || []);
+  renderWarnBanner(trackedTickers, analysisHistory);
   renderPortfolioSummary(portfolioSummaries || []);
   renderSignalChanges(trackedTickers, analysisHistory);
   renderCards(holdings || [], latestSnapshot, trades || []);
   renderHoldings(holdings || [], latestSnapshot, analysisHistory);
   renderWatchlist(watchlist || [], latestSnapshot, analysisHistory);
   renderTrades(trades || []);
+}
+
+const SIGNAL_SEVERITY = {
+  "긴급매도": 0,
+  "매도": 1,
+  "비중축소": 2,
+  "관찰필요": 3,
+  "추격매수금지": 4,
+  "관심제외": 5,
+};
+
+function renderWarnBanner(tickers, analysisHistory) {
+  const el = document.getElementById("warn-banner");
+  const warnings = tickers
+    .map((t) => {
+      const hist = analysisHistory[t] || [];
+      return hist[0] ? { ticker: t, latest: hist[0] } : null;
+    })
+    .filter((w) => w && w.latest.signal in SIGNAL_SEVERITY)
+    .sort((a, b) => SIGNAL_SEVERITY[a.latest.signal] - SIGNAL_SEVERITY[b.latest.signal]);
+
+  if (warnings.length === 0) {
+    el.innerHTML = "";
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="warn-banner">
+      <div class="wb-label">⚠️ 지금 주의 필요 (${warnings.length})</div>
+      ${warnings
+        .map(
+          (w) => `
+        <div class="wb-item">
+          <span class="wb-ticker">${w.ticker}</span>
+          ${signalBadge(w.latest.signal)}
+          <span class="wb-reason">${w.latest.reasoning || ""}</span>
+        </div>
+      `
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function renderPortfolioChart(holdings, snapshots) {
+  const el = document.getElementById("portfolio-chart");
+  if (holdings.length === 0) {
+    el.innerHTML = "";
+    return;
+  }
+
+  const qtyByTicker = {};
+  for (const h of holdings) qtyByTicker[h.ticker] = h.quantity;
+
+  const byDate = {};
+  for (const s of snapshots) {
+    if (!(s.ticker in qtyByTicker)) continue;
+    (byDate[s.date] ??= {})[s.ticker] = s.price;
+  }
+
+  const points = Object.keys(byDate)
+    .sort()
+    .map((date) => {
+      const prices = byDate[date];
+      let value = 0;
+      let coveredTickers = 0;
+      for (const ticker in qtyByTicker) {
+        if (ticker in prices) {
+          value += prices[ticker] * qtyByTicker[ticker];
+          coveredTickers += 1;
+        }
+      }
+      return { date, value, coverage: coveredTickers / Object.keys(qtyByTicker).length };
+    })
+    .filter((p) => p.coverage > 0);
+
+  if (points.length < 2) {
+    el.innerHTML = `
+      <div class="chart-wrap">
+        <div class="chart-label">📈 포트폴리오 가치 추이</div>
+        <div class="chart-note">차트를 그리려면 며칠치 데이터가 더 필요해요 (매일 자동 수집 중)</div>
+      </div>
+    `;
+    return;
+  }
+
+  const values = points.map((p) => p.value);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const w = 600, h = 160, pad = 12;
+  const range = max - min || 1;
+  const stepX = points.length > 1 ? (w - pad * 2) / (points.length - 1) : 0;
+
+  const coords = points.map((p, i) => {
+    const x = pad + i * stepX;
+    const y = pad + (1 - (p.value - min) / range) * (h - pad * 2);
+    return { x, y, value: p.value, date: p.date };
+  });
+
+  const pathD = coords.map((c, i) => `${i === 0 ? "M" : "L"} ${c.x.toFixed(1)} ${c.y.toFixed(1)}`).join(" ");
+  const areaD = `${pathD} L ${coords[coords.length - 1].x.toFixed(1)} ${h - pad} L ${coords[0].x.toFixed(1)} ${h - pad} Z`;
+
+  const first = values[0];
+  const last = values[values.length - 1];
+  const changePct = first > 0 ? ((last - first) / first) * 100 : 0;
+  const color = last >= first ? "var(--up)" : "var(--down)";
+
+  el.innerHTML = `
+    <div class="chart-wrap">
+      <div class="chart-label">📈 포트폴리오 가치 추이 · ${points[0].date} ~ ${points[points.length - 1].date}</div>
+      <div class="value ${toneClass(last - first)}" style="font-size:20px;">$${fmt(last)} <span style="font-size:13px; font-weight:600;">(${fmtPct(changePct)})</span></div>
+      <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
+        <path d="${areaD}" fill="${color}" opacity="0.08" stroke="none" />
+        <path d="${pathD}" fill="none" stroke="${color}" stroke-width="2" />
+        ${coords
+          .map((c, i) => (i === 0 || i === coords.length - 1 ? `<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="3" fill="${color}" />` : ""))
+          .join("")}
+      </svg>
+      <div class="chart-note">현재 보유 수량 기준으로 과거 가격을 소급 계산한 값입니다 (데이터가 있는 날만 반영, 보유 시작일 이전 변화는 미반영).</div>
+    </div>
+  `;
 }
 
 function signalChanged(ticker, analysisHistory) {

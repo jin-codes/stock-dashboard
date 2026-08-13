@@ -1,0 +1,33 @@
+name: Fetch Prices
+
+on:
+  schedule:
+    # every 30 min, 13:00-21:00 UTC (covers US pre-market through after-hours
+    # across both EDT/EST), Mon-Fri. Keeps daily_snapshots' "today" row fresh
+    # throughout the trading day instead of only once at the daily analysis run.
+    - cron: "*/30 13-21 * * 1-5"
+  workflow_dispatch: {}
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: pip install -r scripts/requirements.txt
+
+      - name: Write .env.local for scripts
+        run: |
+          cat > .env.local <<EOF
+          SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          EOF
+
+      - name: Fetch prices
+        run: python scripts/fetch_prices.py
