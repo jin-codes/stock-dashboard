@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>포트폴리오 대시보드</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fafafa;
+    --card: #ffffff;
+    --border: #e4e4e7;
+    --text: #18181b;
+    --muted: #71717a;
+    --up: #059669;
+    --down: #dc2626;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #09090b;
+      --card: #18181b;
+      --border: #27272a;
+      --text: #fafafa;
+      --muted: #a1a1aa;
+      --up: #34d399;
+      --down: #f87171;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  #gate {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #gate form {
+    width: 100%;
+    max-width: 320px;
+    padding: 32px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--card);
+  }
+  #gate h1 { font-size: 16px; margin: 0 0 16px; }
+  #gate input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text);
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+  #gate button, .refresh-btn {
+    width: 100%;
+    padding: 10px 12px;
+    border: none;
+    border-radius: 8px;
+    background: var(--text);
+    color: var(--bg);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  #gate .error { color: var(--down); font-size: 13px; margin: -6px 0 12px; }
+
+  main { max-width: 880px; margin: 0 auto; padding: 32px 16px; display: none; }
+  h1.title { font-size: 22px; margin: 0 0 24px; }
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+  .card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    background: var(--card);
+  }
+  .card .label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .card .value { font-size: 18px; font-weight: 600; }
+  .up { color: var(--up); }
+  .down { color: var(--down); }
+
+  section { margin-bottom: 32px; }
+  section h2 {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    margin: 0 0 10px;
+  }
+  .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    background: var(--card);
+  }
+  .row .ticker { font-weight: 600; }
+  .row .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .row .price { text-align: right; font-weight: 600; }
+  .row .pct { text-align: right; font-size: 12px; }
+  .signal {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+  }
+  .empty { color: var(--muted); font-size: 13px; }
+  .reasoning { font-size: 13px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+  footer { text-align: center; padding: 24px; color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <form id="gate-form">
+    <h1>포트폴리오 대시보드</h1>
+    <input type="password" id="pw" placeholder="비밀번호" autofocus />
+    <p class="error" id="gate-error" style="display:none">비밀번호가 틀렸습니다</p>
+    <button type="submit">입장</button>
+  </form>
+</div>
+
+<main id="app">
+  <h1 class="title">포트폴리오 대시보드</h1>
+  <div class="cards" id="cards"></div>
+
+  <section>
+    <h2>보유 종목</h2>
+    <div id="holdings"></div>
+  </section>
+
+  <section>
+    <h2>관심 종목</h2>
+    <div id="watchlist"></div>
+  </section>
+
+  <section>
+    <h2>최신 시그널</h2>
+    <div id="analysis"></div>
+  </section>
+</main>
+
+<footer>data via Supabase &middot; read-only</footer>
+
+<script type="module">
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const SUPABASE_URL = "https://qfgcqaqusgbvrcjellrs.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_k_g0w-kSf2LowErucmKicA_ABDrslUo";
+const PASSWORD_HASH = "7ba38eb2a26fd5822b024cadedca9359e9a0708e2876ae0ccb67cc2191e1c002";
+const SESSION_KEY = "dashboard_unlocked";
+
+async function sha256Hex(text) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function fmt(n) {
+  return n.toLocaleString("en-US", { maximumFractionDigits: 2 });
+}
+function fmtPct(n) {
+  if (n === null || n === undefined) return null;
+  const sign = n > 0 ? "+" : "";
+  return `${sign}${n.toFixed(2)}%`;
+}
+function toneClass(n) {
+  if (n === null || n === undefined) return "";
+  return n >= 0 ? "up" : "down";
+}
+
+async function unlock() {
+  document.getElementById("gate").style.display = "none";
+  document.getElementById("app").style.display = "block";
+  await loadDashboard();
+}
+
+document.getElementById("gate-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const pw = document.getElementById("pw").value;
+  const hash = await sha256Hex(pw);
+  if (hash === PASSWORD_HASH) {
+    sessionStorage.setItem(SESSION_KEY, "1");
+    unlock();
+  } else {
+    document.getElementById("gate-error").style.display = "block";
+  }
+});
+
+if (sessionStorage.getItem(SESSION_KEY) === "1") {
+  unlock();
+}
+
+async function loadDashboard() {
+  const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const [{ data: holdings }, { data: watchlist }, { data: snapshots }, { data: analysis }] =
+    await Promise.all([
+      client.from("holdings").select("*").order("ticker"),
+      client.from("watchlist").select("*").order("ticker"),
+      client.from("daily_snapshots").select("*").order("date", { ascending: false }),
+      client.from("daily_analysis").select("*").order("date", { ascending: false }),
+    ]);
+
+  const latestByTicker = (rows) => {
+    const map = {};
+    for (const row of rows || []) {
+      if (!map[row.ticker]) map[row.ticker] = row;
+    }
+    return map;
+  };
+
+  const latestSnapshot = latestByTicker(snapshots);
+  const latestAnalysis = latestByTicker(analysis);
+
+  renderCards(holdings || [], latestSnapshot);
+  renderHoldings(holdings || [], latestSnapshot);
+  renderWatchlist(watchlist || [], latestSnapshot);
+  renderAnalysis([...(holdings || []), ...(watchlist || [])], latestAnalysis);
+}
+
+function renderCards(holdings, latestSnapshot) {
+  const rows = holdings.map((h) => {
+    const snap = latestSnapshot[h.ticker];
+    const price = snap ? snap.price : h.avg_cost;
+    return {
+      ticker: h.ticker,
+      marketValue: price * h.quantity,
+      costBasis: h.avg_cost * h.quantity,
+      changePct: snap ? snap.change_pct : null,
+    };
+  });
+
+  const totalValue = rows.reduce((s, r) => s + r.marketValue, 0);
+  const totalCost = rows.reduce((s, r) => s + r.costBasis, 0);
+  const totalPnl = totalValue - totalCost;
+  const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
+
+  const movers = rows.filter((r) => r.changePct !== null);
+  const topGainer = movers.length
+    ? movers.reduce((a, b) => (a.changePct > b.changePct ? a : b))
+    : null;
+  const topLoser = movers.length
+    ? movers.reduce((a, b) => (a.changePct < b.changePct ? a : b))
+    : null;
+
+  const cards = document.getElementById("cards");
+  cards.innerHTML = `
+    <div class="card">
+      <div class="label">총 평가금액</div>
+      <div class="value">$${fmt(totalValue)}</div>
+    </div>
+    <div class="card">
+      <div class="label">총 손익</div>
+      <div class="value ${toneClass(totalPnl)}">${totalPnl >= 0 ? "+" : ""}$${fmt(totalPnl)} (${fmtPct(totalPnlPct)})</div>
+    </div>
+    <div class="card">
+      <div class="label">오늘 상승 상위</div>
+      <div class="value up">${topGainer ? `${topGainer.ticker} ${fmtPct(topGainer.changePct)}` : "-"}</div>
+    </div>
+    <div class="card">
+      <div class="label">오늘 하락 상위</div>
+      <div class="value down">${topLoser ? `${topLoser.ticker} ${fmtPct(topLoser.changePct)}` : "-"}</div>
+    </div>
+  `;
+}
+
+function renderHoldings(holdings, latestSnapshot) {
+  const el = document.getElementById("holdings");
+  if (holdings.length === 0) {
+    el.innerHTML = `<p class="empty">보유 종목이 없습니다</p>`;
+    return;
+  }
+  el.innerHTML = holdings
+    .map((h) => {
+      const snap = latestSnapshot[h.ticker];
+      return `
+        <div class="row">
+          <div>
+            <div class="ticker">${h.ticker}</div>
+            <div class="sub">${h.quantity}주 · 평단 ${fmt(h.avg_cost)}</div>
+          </div>
+          <div>
+            <div class="price">${snap ? fmt(snap.price) : "-"}</div>
+            <div class="pct ${toneClass(snap?.change_pct)}">${snap && snap.change_pct !== null ? fmtPct(snap.change_pct) : "데이터 없음"}</div>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function renderWatchlist(watchlist, latestSnapshot) {
+  const el = document.getElementById("watchlist");
+  if (watchlist.length === 0) {
+    el.innerHTML = `<p class="empty">관심 종목이 없습니다</p>`;
+    return;
+  }
+  el.innerHTML = watchlist
+    .map((w) => {
+      const snap = latestSnapshot[w.ticker];
+      return `
+        <div class="row">
+          <div>
+            <div class="ticker">${w.ticker}</div>
+            <div class="sub">${w.target_price ? `목표가 ${fmt(w.target_price)}` : "목표가 미설정"}</div>
+          </div>
+          <div>
+            <div class="price">${snap ? fmt(snap.price) : "-"}</div>
+            <div class="pct ${toneClass(snap?.change_pct)}">${snap && snap.change_pct !== null ? fmtPct(snap.change_pct) : "데이터 없음"}</div>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function renderAnalysis(tickers, latestAnalysis) {
+  const el = document.getElementById("analysis");
+  const rows = tickers.filter((t) => latestAnalysis[t.ticker]);
+  if (rows.length === 0) {
+    el.innerHTML = `<p class="empty">아직 분석 결과가 없습니다</p>`;
+    return;
+  }
+  el.innerHTML = rows
+    .map((t) => {
+      const a = latestAnalysis[t.ticker];
+      return `
+        <div class="row" style="flex-direction:column; align-items:stretch;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div class="ticker">${a.ticker}</div>
+            <span class="signal">${a.signal}</span>
+          </div>
+          <div class="sub">${a.date} · ${fmt(a.price)}${a.change_pct !== null ? ` (${fmtPct(a.change_pct)})` : ""}</div>
+          ${a.reasoning ? `<div class="reasoning">${a.reasoning}</div>` : ""}
+        </div>
+      `;
+    })
+    .join("");
+}
+</script>
+</body>
+</html>
