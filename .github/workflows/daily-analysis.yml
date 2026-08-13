@@ -10,6 +10,8 @@ jobs:
   analyze:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      INVESTMENT_PROFILE_MD: ${{ secrets.INVESTMENT_PROFILE_MD }}
     steps:
       - uses: actions/checkout@v4
 
@@ -35,9 +37,7 @@ jobs:
           EOF
 
       - name: Write INVESTMENT_PROFILE.md
-        if: ${{ secrets.INVESTMENT_PROFILE_MD != '' }}
-        env:
-          INVESTMENT_PROFILE_MD: ${{ secrets.INVESTMENT_PROFILE_MD }}
+        if: ${{ env.INVESTMENT_PROFILE_MD != '' }}
         run: printf '%s' "$INVESTMENT_PROFILE_MD" > INVESTMENT_PROFILE.md
 
       - name: Run daily analysis
