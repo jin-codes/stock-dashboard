@@ -1,0 +1,75 @@
+#!/usr/bin/env python3
+"""Fetch latest prices for every holdings/watchlist ticker via yfinance and
+upsert them into daily_snapshots. Prints a JSON summary to stdout so a Claude
+Code session running the daily workflow can read the results directly.
+"""
+import json
+import sys
+
+import yfinance as yf
+
+from lib.db import get_client
+
+
+def get_tickers(client):
+    holdings = client.table("holdings").select("ticker").execute().data
+    watchlist = client.table("watchlist").select("ticker").execute().data
+    return sorted({row["ticker"] for row in holdings} | {row["ticker"] for row in watchlist})
+
+
+def fetch_one(ticker: str):
+    hist = yf.Ticker(ticker).history(period="5d")
+    if hist.empty:
+        return None
+
+    last = hist.iloc[-1]
+    price = float(last["Close"])
+
+    try:
+        volume = int(last["Volume"])
+    except (TypeError, ValueError):
+        volume = None
+
+    change_pct = None
+    if len(hist) >= 2:
+        prev_close = float(hist.iloc[-2]["Close"])
+        if prev_close:
+            change_pct = round((price - prev_close) / prev_close * 100, 4)
+
+    return {
+        "ticker": ticker,
+        "date": hist.index[-1].date().isoformat(),
+        "price": round(price, 4),
+        "change_pct": change_pct,
+        "volume": volume,
+    }
+
+
+def main():
+    client = get_client()
+    tickers = get_tickers(client)
+    if not tickers:
+        print("holdings/watchlist에 티커가 없습니다.", file=sys.stderr)
+        return
+
+    results = []
+    for ticker in tickers:
+        try:
+            snap = fetch_one(ticker)
+        except Exception as e:
+            print(f"  {ticker}: 조회 실패 ({e})", file=sys.stderr)
+            continue
+        if snap is None:
+            print(f"  {ticker}: 데이터 없음", file=sys.stderr)
+            continue
+
+        client.table("daily_snapshots").upsert(snap, on_conflict="ticker,date").execute()
+        results.append(snap)
+        pct = f"{snap['change_pct']}%" if snap["change_pct"] is not None else "-"
+        print(f"  {snap['ticker']}: {snap['price']} ({pct})", file=sys.stderr)
+
+    print(json.dumps(results, indent=2, ensure_ascii=False))
+
+
+if __name__ == "__main__":
+    main()
