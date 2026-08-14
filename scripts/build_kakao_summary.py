@@ -59,6 +59,22 @@ def truncate(text: str, max_len: int) -> str:
     return text[: max_len - 1].rstrip() + "…"
 
 
+def build_notable_str(signals, max_items: int = 6) -> str:
+    """눈여겨볼 종목(보유 신호 제외) 리스트를 최대 max_items개까지만 보여주고,
+    나머지는 "외 N개"로 요약한다 - 종목이 많은 날 리스트만으로 200자를
+    다 잡아먹고 요약 문장이 통째로 사라지는 걸 막기 위함."""
+    notable = [(r["ticker"], r["signal"]) for r in signals if r["signal"] != NEUTRAL_SIGNAL]
+    if not notable:
+        return "특이 신호 없음"
+
+    shown = notable[:max_items]
+    notable_str = ", ".join(f"{t}({sig})" for t, sig in shown)
+    remaining = len(notable) - len(shown)
+    if remaining > 0:
+        notable_str += f" 외 {remaining}개"
+    return notable_str
+
+
 def build_message(client, date_str: str | None, max_len: int) -> str:
     portfolio = fetch_portfolio_summary(client, date_str)
     if not portfolio:
@@ -68,18 +84,21 @@ def build_message(client, date_str: str | None, max_len: int) -> str:
     summary = portfolio["summary"] or ""
     signals = fetch_signals(client, actual_date)
 
-    notable = [f"{r['ticker']}({r['signal']})" for r in signals if r["signal"] != NEUTRAL_SIGNAL]
-    notable_str = ", ".join(notable) if notable else "특이 신호 없음"
-
     date_label = dt.date.fromisoformat(actual_date).strftime("%m/%d")
     header = f"[포트폴리오 {date_label}] "
-    tail = f" 주목: {notable_str}"
 
-    budget_for_summary = max_len - len(header) - len(tail)
+    # 종목이 아주 많아도 tail이 무한정 늘어나지 않도록 max_items를 점점
+    # 줄여가며, 요약 문장에 최소한의 자리(MIN_SUMMARY_BUDGET)를 확보한다.
+    MIN_SUMMARY_BUDGET = 40
+    for max_items in (6, 4, 2, 1, 0):
+        notable_str = build_notable_str(signals, max_items=max_items) if max_items else "특이 신호 없음"
+        tail = f" 주목: {notable_str}"
+        budget_for_summary = max_len - len(header) - len(tail)
+        if budget_for_summary >= MIN_SUMMARY_BUDGET or max_items == 0:
+            break
+
     if budget_for_summary < 0:
-        # 종목 목록만으로도 넘치면 종목 목록부터 자른다
-        full = truncate(header + tail.strip(), max_len)
-        return full
+        return truncate(header + tail.strip(), max_len)
 
     summary_part = truncate(summary, budget_for_summary) if budget_for_summary < len(summary) else summary
     message = f"{header}{summary_part}{tail}"
