@@ -45,3 +45,63 @@ jobs:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         run: |
           claude -p "/daily-analysis" --dangerously-skip-permissions
+
+      # ---------------------------------------------------------------
+      # 카카오톡 "나와의 채팅"으로 포트폴리오 요약 발송
+      #
+      # 필요한 GitHub Secrets:
+      #   KAKAO_REST_API_KEY   - Kakao Developers > 앱 키 > REST API 키
+      #   KAKAO_CLIENT_SECRET  - Kakao Developers > 보안 > Client Secret
+      #                          (비활성화했다면 이 secret 자체를 만들지 않아도 됨)
+      #   KAKAO_REFRESH_TOKEN  - 최초 1회 OAuth 인가 코드 플로우로 발급받은 값
+      #
+      # 주의: refresh_token은 발급 후 약 2개월 뒤 만료됩니다. 만료되면 아래
+      # 단계가 실패하니, 그때 다시 로그인해서 KAKAO_REFRESH_TOKEN 값을
+      # 갱신해주세요 (continue-on-error라 daily-analysis 자체는 계속 성공
+      # 처리됩니다 - 실패는 Actions 로그의 warning으로만 표시됨).
+      # ---------------------------------------------------------------
+      - name: Build Kakao summary message
+        continue-on-error: true
+        run: python scripts/build_kakao_summary.py > /tmp/kakao_message.txt
+
+      - name: Send Kakao daily summary
+        continue-on-error: true
+        env:
+          KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
+          KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
+          KAKAO_REFRESH_TOKEN: ${{ secrets.KAKAO_REFRESH_TOKEN }}
+          REPO_URL: https://github.com/${{ github.repository }}
+        run: |
+          echo "보낼 메시지:"
+          cat /tmp/kakao_message.txt
+          echo
+
+          curl -s -X POST "https://kauth.kakao.com/oauth/token" \
+            -H "Content-Type: application/x-www-form-urlencoded;charset=utf-8" \
+            --data-urlencode "grant_type=refresh_token" \
+            --data-urlencode "client_id=${KAKAO_REST_API_KEY}" \
+            --data-urlencode "client_secret=${KAKAO_CLIENT_SECRET}" \
+            --data-urlencode "refresh_token=${KAKAO_REFRESH_TOKEN}" \
+            -o /tmp/token_response.json
+
+          ACCESS_TOKEN=$(python -c "import json; print(json.load(open('/tmp/token_response.json')).get('access_token',''))")
+
+          if [ -z "$ACCESS_TOKEN" ]; then
+            echo "::warning::카카오 액세스 토큰 갱신 실패 - refresh_token이 만료되었을 수 있습니다. 새로 로그인해서 KAKAO_REFRESH_TOKEN을 갱신하세요."
+            cat /tmp/token_response.json
+            exit 1
+          fi
+
+          python scripts/build_kakao_template.py
+
+          curl -s -X POST "https://kapi.kakao.com/v2/api/talk/memo/default/send" \
+            -H "Authorization: Bearer ${ACCESS_TOKEN}" \
+            -H "Content-Type: application/x-www-form-urlencoded;charset=utf-8" \
+            --data-urlencode "template_object@/tmp/template_object.json" \
+            -o /tmp/send_response.json
+
+          echo "카카오 응답:"
+          cat /tmp/send_response.json
+          echo
+
+          grep -q '"result_code":0' /tmp/send_response.json || { echo "::warning::카카오 메시지 발송 실패"; exit 1; }
