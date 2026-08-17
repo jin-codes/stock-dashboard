@@ -8,7 +8,10 @@ on:
     # 5 min is the GitHub Actions floor, but yfinance is an unofficial scrape
     # of Yahoo Finance and can soft rate-limit very frequent callers, so 10
     # min is the safer floor in practice.
-    - cron: "*/10 13-21 * * 1-5"
+    # Offset from the top of the hour (:04, :14, :24, ...) instead of :00/:10
+    # since on-the-hour/round-number slots are the most congested on GitHub's
+    # shared scheduler and get delayed the most.
+    - cron: "4-59/10 13-21 * * 1-5"
   workflow_dispatch: {}
 
 jobs:
