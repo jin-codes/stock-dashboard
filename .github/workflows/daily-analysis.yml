@@ -72,10 +72,6 @@ jobs:
           KAKAO_REFRESH_TOKEN: ${{ secrets.KAKAO_REFRESH_TOKEN }}
           REPO_URL: https://github.com/${{ github.repository }}
         run: |
-          echo "보낼 메시지:"
-          cat /tmp/kakao_message.txt
-          echo
-
           curl -s -X POST "https://kauth.kakao.com/oauth/token" \
             -H "Content-Type: application/x-www-form-urlencoded;charset=utf-8" \
             --data-urlencode "grant_type=refresh_token" \
@@ -100,8 +96,4 @@ jobs:
             --data-urlencode "template_object@/tmp/template_object.json" \
             -o /tmp/send_response.json
 
-          echo "카카오 응답:"
-          cat /tmp/send_response.json
-          echo
-
-          grep -q '"result_code":0' /tmp/send_response.json || { echo "::warning::카카오 메시지 발송 실패"; exit 1; }
+          grep -q '"result_code":0' /tmp/send_response.json || { echo "::warning::카카오 메시지 발송 실패"; cat /tmp/send_response.json; exit 1; }
