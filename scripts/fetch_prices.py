@@ -6,6 +6,7 @@ intraday movement. Prints a JSON summary to stdout so a Claude Code session
 running the daily workflow can read the results directly.
 """
 import json
+import math
 import sys
 from datetime import datetime, timedelta, timezone
 
@@ -38,7 +39,7 @@ def fetch_one(ticker: str):
     change_pct = None
     if len(hist) >= 2:
         prev_close = float(hist.iloc[-2]["Close"])
-        if prev_close:
+        if prev_close and not math.isnan(prev_close):
             change_pct = round((price - prev_close) / prev_close * 100, 4)
 
     return {
