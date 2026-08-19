@@ -222,6 +222,37 @@
     margin-bottom: 6px;
   }
 
+  .top-pick {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+    border: 1px solid #f59e0b;
+    background: rgba(245,158,11,0.1);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-top: 12px;
+  }
+  .top-pick .tp-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #b45309;
+  }
+  .top-pick .tp-ticker {
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .top-pick .tp-reason {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+    flex-basis: 100%;
+  }
+  @media (prefers-color-scheme: dark) {
+    .top-pick { border-color: #fbbf24; background: rgba(251,191,36,0.12); }
+    .top-pick .tp-label { color: #fbbf24; }
+  }
+
   .signal-changes {
     border: 1px solid var(--border);
     border-radius: 10px;
@@ -709,12 +740,19 @@ function renderPortfolioSummary(summaries) {
     <div class="portfolio-summary">
       <div class="ps-label">📊 포트폴리오 분석 · ${latest.date}</div>
       <div>${latest.summary}</div>
+      ${latest.top_pick ? `
+        <div class="top-pick">
+          <span class="tp-label">⭐ 오늘의 최선호주</span>
+          <span class="tp-ticker">${latest.top_pick}</span>
+          ${latest.top_pick_reason ? `<div class="tp-reason">${latest.top_pick_reason}</div>` : ""}
+        </div>
+      ` : ""}
       ${rest.length > 0 ? `
         <button class="history-toggle" onclick="document.getElementById('${historyId}').classList.toggle('open')">지난 분석 기록 보기 (${rest.length})</button>
         <div class="history-list" id="${historyId}">
           ${rest.map((s) => `
             <div class="history-item">
-              <div class="h-head"><span class="h-date">${s.date}</span></div>
+              <div class="h-head"><span class="h-date">${s.date}</span>${s.top_pick ? ` <span class="changed-tag">⭐ ${s.top_pick}</span>` : ""}</div>
               <div class="h-reasoning">${s.summary}</div>
             </div>
           `).join("")}
