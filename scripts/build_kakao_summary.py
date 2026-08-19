@@ -17,11 +17,10 @@ import datetime as dt
 from lib.db import get_client
 
 MAX_LEN_DEFAULT = 200
-NEUTRAL_SIGNAL = "보유"
 
 
 def fetch_portfolio_summary(client, date_str: str | None):
-    q = client.table("portfolio_analysis").select("date,summary").order("date", desc=True)
+    q = client.table("portfolio_analysis").select("date,summary,top_pick").order("date", desc=True)
     if date_str:
         q = q.eq("date", date_str)
     rows = q.limit(1).execute().data
@@ -31,7 +30,7 @@ def fetch_portfolio_summary(client, date_str: str | None):
         # 요청한 날짜 데이터가 없으면 가장 최근 날짜로 fallback
         rows = (
             client.table("portfolio_analysis")
-            .select("date,summary")
+            .select("date,summary,top_pick")
             .order("date", desc=True)
             .limit(1)
             .execute()
@@ -41,38 +40,10 @@ def fetch_portfolio_summary(client, date_str: str | None):
     return None
 
 
-def fetch_signals(client, date_str: str):
-    rows = (
-        client.table("daily_analysis")
-        .select("ticker,signal")
-        .eq("date", date_str)
-        .order("ticker")
-        .execute()
-        .data
-    )
-    return rows or []
-
-
 def truncate(text: str, max_len: int) -> str:
     if len(text) <= max_len:
         return text
     return text[: max_len - 1].rstrip() + "…"
-
-
-def build_notable_str(signals, max_items: int = 6) -> str:
-    """눈여겨볼 종목(보유 신호 제외) 리스트를 최대 max_items개까지만 보여주고,
-    나머지는 "외 N개"로 요약한다 - 종목이 많은 날 리스트만으로 200자를
-    다 잡아먹고 요약 문장이 통째로 사라지는 걸 막기 위함."""
-    notable = [(r["ticker"], r["signal"]) for r in signals if r["signal"] != NEUTRAL_SIGNAL]
-    if not notable:
-        return "특이 신호 없음"
-
-    shown = notable[:max_items]
-    notable_str = ", ".join(f"{t}({sig})" for t, sig in shown)
-    remaining = len(notable) - len(shown)
-    if remaining > 0:
-        notable_str += f" 외 {remaining}개"
-    return notable_str
 
 
 def build_message(client, date_str: str | None, max_len: int) -> str:
@@ -82,24 +53,13 @@ def build_message(client, date_str: str | None, max_len: int) -> str:
 
     actual_date = portfolio["date"]
     summary = portfolio["summary"] or ""
-    signals = fetch_signals(client, actual_date)
+    top_pick = portfolio.get("top_pick") or ""
 
     date_label = dt.date.fromisoformat(actual_date).strftime("%m/%d")
     header = f"[포트폴리오 {date_label}] "
+    tail = f" 최선호주: {top_pick}" if top_pick else ""
 
-    # 종목이 아주 많아도 tail이 무한정 늘어나지 않도록 max_items를 점점
-    # 줄여가며, 요약 문장에 최소한의 자리(MIN_SUMMARY_BUDGET)를 확보한다.
-    MIN_SUMMARY_BUDGET = 40
-    for max_items in (6, 4, 2, 1, 0):
-        notable_str = build_notable_str(signals, max_items=max_items) if max_items else "특이 신호 없음"
-        tail = f" 주목: {notable_str}"
-        budget_for_summary = max_len - len(header) - len(tail)
-        if budget_for_summary >= MIN_SUMMARY_BUDGET or max_items == 0:
-            break
-
-    if budget_for_summary < 0:
-        return truncate(header + tail.strip(), max_len)
-
+    budget_for_summary = max_len - len(header) - len(tail)
     summary_part = truncate(summary, budget_for_summary) if budget_for_summary < len(summary) else summary
     message = f"{header}{summary_part}{tail}"
     return truncate(message, max_len)
