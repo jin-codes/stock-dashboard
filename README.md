@@ -15,15 +15,17 @@
   - `0006_split_chase_signal.sql`: 추격매수금지 신호를 보유/관심 종목용으로 분리
   - `0007_intraday_snapshots.sql`: `intraday_snapshots` (10분 단위 시세 이력,
     대시보드 당일 차트용)
+  - `0008_portfolio_top_pick.sql`: `portfolio_analysis`에 `top_pick`,
+    `top_pick_reason` 추가 (관심종목 중 그날의 최선호주)
 - `scripts/` — Python 스크립트
   - `fetch_prices.py` — yfinance로 시세 수집, `daily_snapshots`(일별)와
     `intraday_snapshots`(10분 단위 이력)에 저장
   - `portfolio.py` — holdings/watchlist/daily_analysis/trades 조회 및 CRUD CLI
   - `save_analysis.py` — `daily_analysis` upsert
-  - `save_portfolio_summary.py` — `portfolio_analysis` upsert
-  - `build_kakao_summary.py` — `portfolio_analysis` + `daily_analysis`에서
-    당일 요약/신호를 읽어 200자 이내 카카오톡 메시지 텍스트로 조립 (아래
-    "카카오톡 알림" 참고)
+  - `save_portfolio_summary.py` — `portfolio_analysis` upsert (요약 +
+    관심종목 최선호주 `top_pick`/`top_pick_reason`)
+  - `build_kakao_summary.py` — `portfolio_analysis`의 당일 요약 + 최선호주를
+    읽어 200자 이내 카카오톡 메시지 텍스트로 조립 (아래 "카카오톡 알림" 참고)
   - `build_kakao_template.py` — 위 메시지를 카카오 "나에게 보내기" API의
     `template_object` JSON으로 변환
   - `lib/db.py` — service role 키로 Supabase 연결하는 공용 클라이언트
@@ -35,7 +37,9 @@
   대화형 세션에서 바로 실행할 수 있는 슬래시 커맨드
 - `.github/workflows/daily-analysis.yml` — 매일 07:00 KST 자동 실행 (분석 +
   선택적으로 카카오톡 알림 발송)
-- `docs/index.html` — GitHub Pages로 배포되는 읽기 전용 대시보드
+- `docs/index.html` — GitHub Pages로 배포되는 읽기 전용 대시보드. 보유
+  종목/관심 종목 현황과 함께 그날의 관심종목 최선호주(top pick)와 선정
+  이유, 과거 이력을 보여줌
 
 ## 로컬 설정
 
@@ -90,8 +94,8 @@ python scripts/fetch_prices.py
 
 ## 카카오톡 알림 (선택)
 
-매일 분석이 끝나면 카카오톡 "나에게 보내기"로 포트폴리오 요약 + 눈여겨볼
-신호를 200자 이내 메시지로 보내줄 수 있습니다. 완전히 선택 사항이며, 아래
+매일 분석이 끝나면 카카오톡 "나에게 보내기"로 포트폴리오 요약 + 관심종목
+최선호주(top pick)를 200자 이내 메시지로 보내줄 수 있습니다. 완전히 선택 사항이며, 아래
 secrets를 등록하지 않으면 이 단계만 조용히 건너뜁니다(`continue-on-error`) —
 `daily-analysis` 본 작업에는 영향 없습니다.
 
@@ -144,5 +148,5 @@ curl -X POST "https://kauth.kakao.com/oauth/token" \
   daily summary" 스텝만 실패(warning)하고 나머지는 정상 동작하니, 그때
   2번 과정을 다시 밟아 `KAKAO_REFRESH_TOKEN`을 갱신하세요.
 - 메시지 본문은 `build_kakao_summary.py`가 그날 `portfolio_analysis.summary`
-  와 `daily_analysis.signal`(보유 제외 신호만)을 조합해서 만듭니다. 형식을
-  바꾸고 싶으면 이 스크립트를 수정하세요.
+  와 `top_pick`(있으면)을 조합해서 만듭니다. 형식을 바꾸고 싶으면 이
+  스크립트를 수정하세요.
