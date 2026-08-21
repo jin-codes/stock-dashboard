@@ -1,139 +1,154 @@
-# 일일 포트폴리오 분석 워크플로
+# Daily Portfolio Analysis Workflow
 
-이 문서는 Claude Code가 (수동 실행이든 GitHub Actions 자동 실행이든) 매일
-따라야 할 절차입니다. 결과는 `daily_analysis`/`portfolio_analysis` 테이블에
-저장됩니다.
+This document is the procedure Claude Code should follow every day
+(whether run manually or headlessly via GitHub Actions). Results are
+saved to the `daily_analysis`/`portfolio_analysis` tables.
 
-**시작 전에 `INVESTMENT_PROFILE.md`가 있으면 반드시 읽고, 거기 적힌 리스크
-성향/투자 기간/집중도에 대한 태도를 신호 판단과 reasoning 톤에 그대로
-반영하세요.** 사용자에게 다시 물어볼 필요 없이 그 파일이 기준입니다.
-이 파일은 개인 투자 성향을 담고 있어 `.gitignore`에 포함되어 커밋되지
-않습니다 — 없다면 `INVESTMENT_PROFILE.md.example`을 복사해서 채워달라고
-사용자에게 안내하고, 채워지기 전까지는 특정 투자 성향을 가정하지 말고
-중립적인 기준으로만 신호를 판단하세요.
+**Before starting, if `INVESTMENT_PROFILE.md` exists, read it and carry
+its risk tolerance / investment horizon / concentration stance directly
+into your signal judgments and reasoning tone.** That file is the source
+of truth — there's no need to ask the user again. It contains personal
+investment preferences and is gitignored, so it isn't committed — if it
+doesn't exist, tell the user to copy `INVESTMENT_PROFILE.md.example` and
+fill it in, and until it's filled in, don't assume any particular
+investment stance — judge signals on neutral criteria only.
 
-**전날 분석을 반드시 참조하세요.** 매번 신호를 처음부터 새로 판단하지 말고,
-직전 분석(reasoning, signal)을 기준선으로 삼아 "그 이후 무엇이 실제로
-바뀌었는가"를 판단하는 방식으로 접근하세요. thesis를 흔들 만한 새로운 사실
-(가이던스 변경, 실적 서프라이즈, 핵심 지표의 유의미한 변화, 뉴스 등)이 없다면
-signal과 reasoning의 결론을 그대로 유지하세요 — 단순히 하루 지났다는
-이유로, 혹은 표현을 바꾸기 위해 신호를 바꾸지 마세요. 이 정도로 전날과
-비교해서 실질적 변화 여부를 판별할 수 있을 만큼 깊이 있게 리서치하고
-판단하세요. 신호를 바꾸는 경우 reasoning에 "전날 대비 무엇이 바뀌어서
-바꿨는지"를 명시하세요.
+**Always reference the previous day's analysis.** Don't re-derive every
+signal from scratch each time — treat the most recent analysis
+(reasoning, signal) as the baseline and ask "what has actually changed
+since then?" If there's no new fact that would shake the thesis (a
+guidance change, an earnings surprise, a meaningful shift in a key
+metric, news, etc.), keep the previous signal and reasoning's conclusion
+as-is — don't change the signal just because a day has passed, or to
+vary the wording. Research and judge deeply enough that you can reliably
+tell whether anything materially changed since yesterday. When you do
+change a signal, state explicitly in the reasoning what changed relative
+to the prior day that justified it.
 
-**어떤 기업이든 좋은 점과 나쁜 점이 동시에 존재합니다.** 장점만 있거나
-단점만 있는 회사는 없다는 것을 항상 염두에 두고, 리서치와 reasoning에서
-한쪽 면만 보고 결론내리지 마세요. 특히 강한 매수/매도 신호(추가매수, 매도,
-긴급매도)를 낼 때는 반대되는 리스크나 긍정 요인도 함께 검토했는지
-확인하고, reasoning에 균형 잡힌 근거(예: 긍정 요인 A가 있지만 리스크 B도
-존재하며, 그럼에도 종합적으로 X가 우세하다)를 담으세요.
+**Every company has both good and bad points at the same time.** No
+company is purely a positive or purely a negative story — keep this in
+mind and don't let your research or reasoning conclude from only one
+side. Especially when issuing a strong buy/sell signal (add more, sell,
+urgent sell), confirm you've also weighed the opposing risk or positive
+factor, and make sure the reasoning is balanced (e.g., "positive factor A
+exists, but risk B also exists, and on balance X wins out").
 
-## 절차
+## Procedure
 
-1. **가격 수집**
+1. **Fetch prices**
    ```
    python scripts/fetch_prices.py
    ```
-   holdings + watchlist의 모든 티커에 대해 yfinance로 최신 종가/등락률/거래량을
-   가져와 `daily_snapshots`에 저장하고, 결과를 JSON으로 출력합니다. 이 출력을
-   이후 단계에서 가격/등락률 값으로 사용하세요.
+   Fetches the latest close price / change % / volume via yfinance for
+   every ticker in holdings + watchlist, saves it to `daily_snapshots`,
+   and prints the result as JSON. Use this output as the price/change %
+   values in later steps.
 
-2. **현재 포트폴리오 확인**
+2. **Review the current portfolio**
    ```
    python scripts/portfolio.py holdings list
    python scripts/portfolio.py watchlist list
    ```
-   각 종목의 `thesis`(투자 근거)를 확인합니다.
+   Check each ticker's `thesis` (investment rationale).
 
-3. **전날 분석 확인**
+3. **Review the previous day's analysis**
    ```
    python scripts/portfolio.py analysis list --ticker <TICKER> --limit 1
    ```
-   각 티커의 가장 최근 signal/reasoning을 확인하고, 그 결론을 이번 분석의
-   기준선으로 삼으세요.
+   Check each ticker's most recent signal/reasoning and use that
+   conclusion as the baseline for today's analysis.
 
-4. **종목별 뉴스/실적 리서치**
-   각 티커에 대해 WebSearch로 최근 1~2주 내 뉴스, 실적 발표, 가이던스 변경,
-   애널리스트 의견 등을 확인하세요. 목표는 3단계에서 확인한 직전 분석의
-   thesis/signal이 여전히 유효한지, 아니면 무너뜨리는(혹은 강화하는) 새로운
-   사실이 있는지 판단하는 것입니다. 새로운 사실이 없다면 직전 signal을
-   유지할 근거로 삼으세요.
+4. **Research news/earnings per ticker**
+   For each ticker, use WebSearch to check news, earnings releases,
+   guidance changes, and analyst opinions from the last 1–2 weeks. The
+   goal is to determine whether the prior analysis's thesis/signal from
+   step 3 still holds, or whether there's a new fact that undermines (or
+   reinforces) it. If there's no new fact, that's your basis for keeping
+   the prior signal.
 
-5. **신호 판단**
-   가격 변동 + 뉴스/실적 + thesis 유효성 + 전날 분석 대비 실질적 변화 여부를
-   종합해서 아래 10가지 중 하나를 신호(signal)로 결정하세요. 반드시 이 값
-   그대로 사용 (DB check 제약):
+5. **Decide the signal**
+   Combine the price move + news/earnings + thesis validity + whether
+   anything materially changed since the prior day's analysis to decide
+   on exactly one of the 10 signals below. You must use the literal
+   Korean value shown — it's enforced by a DB check constraint:
 
-   | signal | 의미 | 주로 해당 |
+   | signal (DB value) | meaning | mainly for |
    |---|---|---|
-   | 추가매수 | thesis 강화, 비중 확대 근거 있음 | holdings |
-   | 보유 | thesis 유효, 현상 유지, 특이사항 없음 | holdings |
-   | 관찰필요 | thesis 대체로 유효하나 초기 경고 신호 있음 (수요 둔화 조짐, 마진 압박 시작 등) — 아직 팔 정도는 아니지만 주시 필요 | holdings |
-   | 비중축소 | 부분 익절/리스크 축소 근거 있음, 완전 청산은 아님 (예: 과도하게 오른 포지션의 일부 차익실현) | holdings |
-   | 매도 | thesis 훼손, 포지션 청산 근거 있음 | holdings |
-   | 긴급매도 | 심각한 악재(가이던스 철회, 회계 이슈, 핵심 고객 이탈 등)로 즉시 청산 권고 — 매도보다 긴급도 높음, 남발 금지 | holdings |
-   | 추격매수금지 | 보유 포지션이 단기 급등 등으로 지금은 추가 매수 시점 아님, 관망 | holdings |
-   | 매수 | 신규 진입 근거 있음 (목표가 도달, thesis 확인 등) | watchlist |
-   | 매수보류 | thesis는 유효하나 단기 급등/불확실성 등으로 지금은 진입 시점 아님, 관망 | watchlist |
-   | 관심제외 | thesis가 애초에 성립하지 않거나 무산됨, 관심종목에서 빼는 게 나음 | watchlist |
+   | 추가매수 | thesis reinforced, grounds to add to the position | holdings |
+   | 보유 | thesis still holds, no change, nothing notable | holdings |
+   | 관찰필요 | thesis mostly holds but there's an early warning sign (demand softening, margin pressure starting, etc.) — not sell-worthy yet but needs watching | holdings |
+   | 비중축소 | grounds for partial profit-taking / risk reduction, not a full exit (e.g. trimming part of a position that's run up too far) | holdings |
+   | 매도 | thesis broken, grounds to exit the position | holdings |
+   | 긴급매도 | serious bad news (guidance withdrawn, accounting issue, loss of a key customer, etc.) warranting immediate exit — more urgent than 매도, don't overuse | holdings |
+   | 추격매수금지 | an existing position has run up sharply short-term; now isn't the time to add more — wait and watch | holdings |
+   | 매수 | grounds for a new entry (hit target price, thesis confirmed, etc.) | watchlist |
+   | 매수보류 | thesis still holds but a short-term spike/uncertainty means now isn't the entry point — wait and watch | watchlist |
+   | 관심제외 | thesis never held or has fallen apart — better to drop it from the watchlist | watchlist |
 
-   `관찰필요`는 `INVESTMENT_PROFILE.md`가 명시적으로 요청한 "펀더멘털 경고"를
-   위한 신호입니다 — 경고감이 있는데 매도까지는 아니라면 `보유`로 뭉개지 말고
-   반드시 `관찰필요`를 쓰세요.
+   `관찰필요` is specifically the "fundamental warning" signal that
+   `INVESTMENT_PROFILE.md` explicitly calls for — if there's a warning
+   sign but it doesn't rise to a sell, don't flatten it into `보유`;
+   use `관찰필요`.
 
-6. **저장**
-   각 티커마다:
+6. **Save**
+   For each ticker:
    ```
-   python scripts/save_analysis.py <TICKER> --date <오늘 날짜 YYYY-MM-DD> \
-     --price <1단계에서 나온 가격> --change-pct <등락률> \
-     --signal <위 10가지 중 하나> --reasoning "<근거를 5~8문장으로, 구체적 사실 인용>"
+   python scripts/save_analysis.py <TICKER> --date <today's date, YYYY-MM-DD> \
+     --price <price from step 1> --change-pct <change %> \
+     --signal <one of the 10 values above> --reasoning "<5-8 sentences citing concrete facts>"
    ```
-   `reasoning`은 "왜 이 신호인지"를 다음 사람이 읽고 바로 이해할 수 있게
-   구체적으로 쓰세요. 가격/뉴스/실적 등 근거 사실을 나열하는 데 그치지 말고,
-   thesis 대비 어떻게 유효/훼손되는지, 그래서 왜 이 신호인지까지 문장으로
-   풀어서 충분히 설명하세요 (예: "3분기 매출 가이던스 상향 발표, thesis의
-   핵심인 클라우드 매출 성장세 확인됨"). 전날과 signal이 동일하다면 "전날과
-   동일 — 근거"임을, 바뀌었다면 무엇이 바뀌어 바뀌었는지를 reasoning에 담아
-   다음 사람이 변화 여부를 바로 알 수 있게 하세요.
+   Write `reasoning` specifically enough that the next reader immediately
+   understands "why this signal." Don't just list facts (price, news,
+   earnings) — spell out how they hold up or break the thesis, and
+   therefore why this signal follows (e.g. "Q3 revenue guidance raised,
+   confirming the cloud-revenue-growth thesis"). If the signal is
+   unchanged from the prior day, say "same as prior day — because ..."; if
+   it changed, state what changed, so the next reader can immediately see
+   whether anything moved.
 
-7. **포트폴리오 전체 분석**
-   개별 종목 signal과 별개로, 포트폴리오 전체를 보고 아래를 2~4문장으로
-   종합하세요:
-   - 오늘 전체적으로 어떤 흐름이었는지 (상승/하락 종목 비중, 주요 동인)
-   - `INVESTMENT_PROFILE.md`에서 언급한 집중 테마/섹터가 있다면, 그 전반에
-     걸친 펀더멘털 훼손 신호가 있었는지 명시적으로 경고 (없으면 "특이 경고
-     없음"이라고 명시)
-   - 오늘 신호들의 분포(예: 추격매수금지/매수보류가 많으면 "단기 과열 구간" 등 해석)
+7. **Portfolio-level analysis**
+   Separately from individual ticker signals, look at the portfolio as a
+   whole and summarize the following in 2–4 sentences:
+   - The overall tone of the day (share of gainers/losers, main drivers)
+   - If `INVESTMENT_PROFILE.md` names a concentrated theme/sector, call
+     out explicitly whether there was any sign of fundamental damage
+     across it (if not, say so explicitly — "no notable warnings")
+   - What today's signal distribution suggests (e.g. lots of
+     추격매수금지/매수보류 might mean "short-term overheated" — interpret it)
 
-8. **관심종목 최선호주 선정**
-   관심종목(watchlist) 중 오늘 signal이 `매수`인 티커들을 모아 비교하세요.
-   - 하나도 없으면 최선호주 없음 — 9단계에서 `--top-pick`/`--top-pick-reason`
-     없이 저장하세요.
-   - 하나 이상 있으면, 성장성/구조적 경쟁우위/애널리스트 컨센서스/오늘 하락장
-     대비 상대적 강도 등을 종합 비교해 그중 가장 근거가 강한 종목 1개를
-     최선호주로 선정하세요. `INVESTMENT_PROFILE.md`가 있다면 거기 적힌 리스크
-     성향/집중도 기준을 우선 반영하고, 없다면 중립적 펀더멘털 기준으로
-     판단하세요.
-   - 매수 신호가 여러 개라도 항상 기계적으로 순위를 다시 매기지 말고, 전날
-     최선호주가 오늘도 근거가 가장 강하면 그대로 유지하세요. 다른 종목이
-     명백히 더 강해졌을 때만 교체하고, 교체했다면 이유를 reason에 명시하세요.
+8. **Pick the watchlist top pick**
+   Gather every watchlist ticker whose signal today is `매수` and compare
+   them.
+   - If there are none, there's no top pick — save without
+     `--top-pick`/`--top-pick-reason` in step 9.
+   - If there's one or more, compare them on growth potential, structural
+     competitive advantage, analyst consensus, relative strength versus
+     today's market, etc., and pick the single ticker with the strongest
+     case as the top pick. If `INVESTMENT_PROFILE.md` exists, weight its
+     risk tolerance/concentration criteria first; otherwise judge on
+     neutral fundamentals.
+   - Even with multiple buy signals, don't mechanically re-rank every
+     time — if yesterday's top pick still has the strongest case today,
+     keep it. Only swap it out when another ticker has become clearly
+     stronger, and state why in the reason if you do.
 
-9. **저장**
+9. **Save**
    ```
-   python scripts/save_portfolio_summary.py --date <오늘 날짜 YYYY-MM-DD> \
-     --summary "<2~4문장 요약>" \
-     [--top-pick <TICKER> --top-pick-reason "<1~2문장 선정 이유>"]
+   python scripts/save_portfolio_summary.py --date <today's date, YYYY-MM-DD> \
+     --summary "<2-4 sentence summary>" \
+     [--top-pick <TICKER> --top-pick-reason "<1-2 sentence reason>"]
    ```
 
-10. **요약**
-    마지막에 오늘 처리한 전체 티커와 각각의 signal, 포트폴리오 전체 요약,
-    그리고 오늘의 최선호주(있다면 티커+이유)를 표+텍스트로 간단히 정리해서
-    출력하세요.
+10. **Summarize**
+    Finally, print a short table + text summarizing every ticker handled
+    today with its signal, the portfolio-level summary, and today's top
+    pick (ticker + reason, if any).
 
-## 참고
+## Notes
 
-- 스크립트는 `.env.local`의 `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY`로
-  Supabase에 연결합니다 (RLS 우회, service role 전용).
-- `daily_analysis`는 `(ticker, date)` unique, `portfolio_analysis`는 `date`
-  unique라 같은 날 재실행해도 upsert로 덮어씁니다 — 재실행이 안전합니다.
+- The scripts connect to Supabase using `SUPABASE_URL` /
+  `SUPABASE_SERVICE_ROLE_KEY` from `.env.local` (bypasses RLS,
+  service-role only).
+- `daily_analysis` is unique on `(ticker, date)` and `portfolio_analysis`
+  is unique on `date`, so re-running on the same day safely overwrites
+  via upsert — reruns are safe.

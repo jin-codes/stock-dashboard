@@ -1,27 +1,32 @@
-# 투자 성향
+# Investment Profile
 
-일일 분석(`DAILY_ANALYSIS.md`)에서 신호를 판단할 때 아래 기준을 따르세요.
-이 파일은 `.gitignore`에 포함되어 커밋되지 않습니다 — 이 예시를
-`INVESTMENT_PROFILE.md`로 복사한 뒤 본인의 투자 성향에 맞게 내용을
-채워서 사용하세요.
+Follow the criteria below when the daily analysis (`DAILY_ANALYSIS.md`)
+judges signals. This file is gitignored and never committed — copy this
+example to `INVESTMENT_PROFILE.md` and fill it in with your own
+investment profile.
 
 ```bash
 cp INVESTMENT_PROFILE.md.example INVESTMENT_PROFILE.md
 ```
 
-아래는 채워야 할 항목 예시입니다. 실제 내용은 자유롭게 작성하되, 형식은
-유지하는 것을 권장합니다 — `DAILY_ANALYSIS.md`가 이 구조를 참고합니다.
+Below are example fields to fill in. Write the actual content however
+you like, but keeping this structure is recommended — `DAILY_ANALYSIS.md`
+refers to it.
 
-- **리스크 성향**: (예: 가치투자 선호 / 성장주 선호 / 공격적 모멘텀 추종 등
-  본인의 매수 판단 기준을 구체적으로 서술)
-- **투자 기간**: (예: 단기 트레이딩 / 3개월 이상 중기 보유 / 1년 이상 장기
-  보유 등, 매도 신호 판단에 영향을 주는 보유 기간 원칙)
-- **포트폴리오 집중도/테마**: (예: 특정 섹터에 의도적으로 집중하고 있는지,
-  분산을 원하는지, 집중 시 어떤 리스크를 우선 경고받고 싶은지)
+- **Risk tolerance**: (e.g. value-investing preference / growth-stock
+  preference / aggressive momentum-following — describe your own buying
+  criteria concretely)
+- **Investment horizon**: (e.g. short-term trading / mid-term holding of
+  3+ months / long-term holding of 1+ years — holding-period principles
+  that should influence sell-signal judgments)
+- **Portfolio concentration/themes**: (e.g. whether you're deliberately
+  concentrated in a specific sector, whether you want diversification,
+  and what risks you want flagged first if concentrated)
 
-## 신호 판단 시 적용 방식
+## How to apply this when judging signals
 
-- 위 리스크 성향/투자 기간 기준에 맞춰 "매수"/"매도"/"보유"/"관찰필요"
-  등 신호를 어떤 조건에서 사용할지 구체적으로 정의하세요.
-- 어떤 상황에서 신호를 남발하지 않을지(예: 단기 변동성만으로 매도 신호를
-  주지 않음) 명시하면 분석이 일관됩니다.
+- Define concretely, based on the risk tolerance/horizon above, under
+  what conditions each signal (buy/sell/hold/watch, etc.) should be used.
+- Note when signals should *not* be issued (e.g. don't issue a sell
+  signal from short-term volatility alone) so the analysis stays
+  consistent.
