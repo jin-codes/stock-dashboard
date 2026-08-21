@@ -1,152 +1,164 @@
 # stock-dashboard
 
-개인용 주식 포트폴리오 분석 도구. 별도 웹서버/API 서버 없이, Supabase를
-백엔드로 두고 Claude Code가 직접 실행하는 Python 스크립트 + GitHub Actions로
-매일 자동 분석합니다.
+A personal stock portfolio analysis tool. There's no separate web/API
+server — Supabase is the backend, and Python scripts run directly by
+Claude Code (plus GitHub Actions) perform the daily automated analysis.
 
-## 구성
+## Structure
 
-- `supabase/migrations/` — DB 스키마
+- `supabase/migrations/` — DB schema
   - `0001_init.sql`: `holdings`, `watchlist`, `daily_snapshots`
-  - `0002_daily_analysis.sql`: `daily_analysis` (매일 분석 결과)
-  - `0003_portfolio_analysis.sql`: `portfolio_analysis` (포트폴리오 전체 요약)
-  - `0004_expand_signals.sql`: signal 9종으로 확장
-  - `0005_trades.sql`: `trades` (매도 이력/실현손익)
-  - `0006_split_chase_signal.sql`: 추격매수금지 신호를 보유/관심 종목용으로 분리
-  - `0007_intraday_snapshots.sql`: `intraday_snapshots` (10분 단위 시세 이력,
-    대시보드 당일 차트용)
-  - `0008_portfolio_top_pick.sql`: `portfolio_analysis`에 `top_pick`,
-    `top_pick_reason` 추가 (관심종목 중 그날의 최선호주)
-- `scripts/` — Python 스크립트
-  - `fetch_prices.py` — yfinance로 시세 수집, `daily_snapshots`(일별)와
-    `intraday_snapshots`(10분 단위 이력)에 저장
-  - `portfolio.py` — holdings/watchlist/daily_analysis/trades 조회 및 CRUD CLI
-  - `save_analysis.py` — `daily_analysis` upsert
-  - `save_portfolio_summary.py` — `portfolio_analysis` upsert (요약 +
-    관심종목 최선호주 `top_pick`/`top_pick_reason`)
-  - `build_kakao_summary.py` — `portfolio_analysis`의 당일 요약 + 최선호주를
-    읽어 200자 이내 카카오톡 메시지 텍스트로 조립 (아래 "카카오톡 알림" 참고)
-  - `build_kakao_template.py` — 위 메시지를 카카오 "나에게 보내기" API의
-    `template_object` JSON으로 변환
-  - `lib/db.py` — service role 키로 Supabase 연결하는 공용 클라이언트
-- `DAILY_ANALYSIS.md` — 매일 분석 워크플로 절차 (Claude Code가 따라 실행)
-- `INVESTMENT_PROFILE.md` — 리스크 성향/투자 기간 등 분석 기준 (매번 재입력
-  불필요). 개인 투자 성향이 담겨 있어 `.gitignore` 처리됨 — 저장소에는
-  템플릿인 `INVESTMENT_PROFILE.md.example`만 포함
-- `.claude/commands/daily-analysis.md` — 위 워크플로를 `/daily-analysis`로
-  대화형 세션에서 바로 실행할 수 있는 슬래시 커맨드
-- `.github/workflows/daily-analysis.yml` — 매일 07:00 KST 자동 실행 (분석 +
-  선택적으로 카카오톡 알림 발송)
-- `docs/index.html` — GitHub Pages로 배포되는 읽기 전용 대시보드. 보유
-  종목/관심 종목 현황과 함께 그날의 관심종목 최선호주(top pick)와 선정
-  이유, 과거 이력을 보여줌
+  - `0002_daily_analysis.sql`: `daily_analysis` (daily analysis results)
+  - `0003_portfolio_analysis.sql`: `portfolio_analysis` (overall portfolio summary)
+  - `0004_expand_signals.sql`: expanded to 9 signal types
+  - `0005_trades.sql`: `trades` (sell history / realized P&L)
+  - `0006_split_chase_signal.sql`: split the "don't chase" signal into
+    separate holdings/watchlist versions
+  - `0007_intraday_snapshots.sql`: `intraday_snapshots` (10-minute price
+    history, used for the dashboard's intraday chart)
+  - `0008_portfolio_top_pick.sql`: adds `top_pick`, `top_pick_reason` to
+    `portfolio_analysis` (the day's top pick among watchlist tickers)
+- `scripts/` — Python scripts
+  - `fetch_prices.py` — fetches prices via yfinance, saves to
+    `daily_snapshots` (daily) and `intraday_snapshots` (10-minute history)
+  - `portfolio.py` — CLI for reading/writing holdings/watchlist/daily_analysis/trades
+  - `save_analysis.py` — upserts `daily_analysis`
+  - `save_portfolio_summary.py` — upserts `portfolio_analysis` (summary +
+    watchlist top pick `top_pick`/`top_pick_reason`)
+  - `build_kakao_summary.py` — reads the day's summary + top pick from
+    `portfolio_analysis` and assembles a KakaoTalk message under 200
+    characters (see "KakaoTalk notifications" below)
+  - `build_kakao_template.py` — converts that message into the
+    `template_object` JSON for the Kakao "send to me" API
+  - `lib/db.py` — shared Supabase client using the service role key
+- `DAILY_ANALYSIS.md` — the daily analysis workflow procedure (followed
+  by Claude Code)
+- `INVESTMENT_PROFILE.md` — analysis criteria such as risk tolerance and
+  investment horizon (no need to re-enter every time). Contains personal
+  investment preferences, so it's gitignored — only the template
+  `INVESTMENT_PROFILE.md.example` is committed to the repo
+- `.claude/commands/daily-analysis.md` — a slash command that runs the
+  above workflow directly in an interactive session via `/daily-analysis`
+- `.github/workflows/daily-analysis.yml` — runs automatically every day
+  at 07:00 KST (analysis + optional KakaoTalk notification)
+- `docs/index.html` — a read-only dashboard deployed via GitHub Pages.
+  Shows holdings/watchlist status along with the day's watchlist top
+  pick, the reason it was picked, and past history
 
-## 로컬 설정
+## Local setup
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r scripts/requirements.txt
-cp .env.local.example .env.local  # SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 채우기
-cp INVESTMENT_PROFILE.md.example INVESTMENT_PROFILE.md  # 본인 투자 성향 채우기
+cp .env.local.example .env.local  # fill in SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY
+cp INVESTMENT_PROFILE.md.example INVESTMENT_PROFILE.md  # fill in your own investment profile
 ```
 
-`SUPABASE_SERVICE_ROLE_KEY`는 RLS를 우회하는 키입니다. 절대 커밋하지 마세요
-(`.env.local`은 `.gitignore`에 포함되어 있습니다).
+`SUPABASE_SERVICE_ROLE_KEY` bypasses RLS. Never commit it
+(`.env.local` is already in `.gitignore`).
 
-## 사용법
+## Usage
 
 ```bash
-# 포트폴리오 조회/수정 (Claude Code 세션에서 자연어로 요청해도 동일하게 동작)
+# Read/write portfolio data (also works via natural language in a Claude Code session)
 python scripts/portfolio.py holdings list
 python scripts/portfolio.py holdings add AAPL --quantity 10 --avg-cost 150 --first-buy-date 2024-01-01 --thesis "..."
 python scripts/portfolio.py watchlist add NVDA --target-price 900 --thesis "..."
-python scripts/portfolio.py holdings sell AAPL --quantity 4 --price 227.5 --note "부분 익절"
+python scripts/portfolio.py holdings sell AAPL --quantity 4 --price 227.5 --note "partial profit-taking"
 python scripts/portfolio.py trades list
 
-# 시세만 수집
+# Just fetch prices
 python scripts/fetch_prices.py
 
-# 일일 분석 워크플로 전체 실행 (가격 수집 + 뉴스 리서치 + 신호 판단 + 저장)
-# Claude Code 세션에서: /daily-analysis
+# Run the full daily analysis workflow (fetch prices + news research + signal
+# judgment + save)
+# In a Claude Code session: /daily-analysis
 ```
 
-## GitHub Actions 자동 실행
+## GitHub Actions automation
 
-매일 22:00 UTC(07:00 KST)에 `.github/workflows/daily-analysis.yml`이
-`DAILY_ANALYSIS.md`의 절차를 헤드리스 Claude Code로 실행합니다. Repo secrets에
-아래 값을 등록해야 합니다:
+`.github/workflows/daily-analysis.yml` runs the procedure in
+`DAILY_ANALYSIS.md` headlessly via Claude Code every day at 22:00 UTC
+(07:00 KST). You need to register the following repo secrets:
 
 - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
-- `CLAUDE_CODE_OAUTH_TOKEN` — 로컬에서 `claude setup-token`으로 발급 (구독
-  크레딧으로 처리되며 별도 API 과금 없음)
-- `INVESTMENT_PROFILE_MD` (선택) — `INVESTMENT_PROFILE.md`는 개인 투자
-  성향이 담겨 있어 저장소에 커밋되지 않으므로, 자동 실행에서도 반영하려면
-  파일 내용을 그대로 이 secret에 등록하세요:
+- `CLAUDE_CODE_OAUTH_TOKEN` — issued locally via `claude setup-token`
+  (billed against your subscription credits, no separate API charges)
+- `INVESTMENT_PROFILE_MD` (optional) — since `INVESTMENT_PROFILE.md`
+  contains personal investment preferences and isn't committed to the
+  repo, register its contents as this secret if you want automated runs
+  to take it into account:
   ```bash
   gh secret set INVESTMENT_PROFILE_MD < INVESTMENT_PROFILE.md
   ```
-  등록하지 않으면 워크플로는 이 파일 없이 중립적인 기준으로 분석합니다.
+  If not set, the workflow analyzes using neutral criteria without this file.
 
-워크플로는 `--dangerously-skip-permissions`로 실행됩니다 (헤드리스 CI라 승인
-프롬프트를 띄울 수 없음). 매 실행이 격리된 새 러너에서 이 저장소의 스크립트만
-다루므로 리스크는 낮지만, 워크플로 파일을 수정할 땐 유의하세요.
+The workflow runs with `--dangerously-skip-permissions` (headless CI can't
+show approval prompts). Each run is isolated to a fresh runner and only
+touches this repo's scripts, so the risk is low, but be careful when
+editing the workflow file.
 
-## 카카오톡 알림 (선택)
+## KakaoTalk notifications (optional)
 
-매일 분석이 끝나면 카카오톡 "나에게 보내기"로 포트폴리오 요약 + 관심종목
-최선호주(top pick)를 200자 이내 메시지로 보내줄 수 있습니다. 완전히 선택 사항이며, 아래
-secrets를 등록하지 않으면 이 단계만 조용히 건너뜁니다(`continue-on-error`) —
-`daily-analysis` 본 작업에는 영향 없습니다.
+After each day's analysis finishes, it can send a portfolio summary +
+watchlist top pick as a KakaoTalk "send to me" message under 200
+characters. This is entirely optional — if you don't register the
+secrets below, this step is silently skipped (`continue-on-error`) and
+has no effect on the main `daily-analysis` job.
 
-### 1. Kakao 앱 만들기
+### 1. Create a Kakao app
 
-1. [Kakao Developers](https://developers.kakao.com) → 내 애플리케이션 →
-   애플리케이션 추가하기
-2. **앱 설정 → 플랫폼** → Web 플랫폼 등록 (사이트 도메인은 아무 값이나,
-   예: `https://localhost.com`)
-3. **앱 설정 → 앱 키** → REST API 키 확인
-4. **제품 설정 → 카카오 로그인** → 활성화 ON, Redirect URI 등록 (플랫폼에
-   등록한 도메인과 별개로 여기서도 등록해야 함, 예: `https://localhost.com/oauth`)
-5. **제품 설정 → 카카오 로그인 → 동의항목** → "카카오톡 메시지 전송"
-   (`talk_message`) 사용 설정
-6. **제품 설정 → 카카오 로그인 → 보안** → Client Secret이 켜져 있다면 값 확인
-   (꺼져 있다면 아래에서 관련 secret은 생략)
+1. [Kakao Developers](https://developers.kakao.com) → My Applications →
+   Add Application
+2. **App Settings → Platform** → register a Web platform (any site
+   domain works, e.g. `https://localhost.com`)
+3. **App Settings → App Keys** → note the REST API key
+4. **Product Settings → Kakao Login** → turn Activation ON, register a
+   Redirect URI (this must be registered separately here, even though
+   you already registered a domain in the platform step, e.g.
+   `https://localhost.com/oauth`)
+5. **Product Settings → Kakao Login → Consent Items** → enable "Send
+   KakaoTalk Messages" (`talk_message`)
+6. **Product Settings → Kakao Login → Security** → if Client Secret is
+   turned on, note its value (if it's off, skip the related secret below)
 
-### 2. refresh_token 발급 (최초 1회, 브라우저에서)
+### 2. Issue a refresh_token (one-time, in a browser)
 
-아래 URL을 열어 로그인 + 동의:
+Open the URL below to log in and consent:
 
 ```
-https://kauth.kakao.com/oauth/authorize?client_id=<REST_API_키>&redirect_uri=<Redirect_URI>&response_type=code&scope=talk_message
+https://kauth.kakao.com/oauth/authorize?client_id=<REST_API_KEY>&redirect_uri=<Redirect_URI>&response_type=code&scope=talk_message
 ```
 
-리다이렉트된 주소(`<Redirect_URI>?code=...`, 에러 페이지가 떠도 정상)에서
-`code` 값을 복사한 뒤, 터미널에서 토큰 교환:
+Copy the `code` value from the redirected address
+(`<Redirect_URI>?code=...` — it's fine even if it shows an error page),
+then exchange it for a token in your terminal:
 
 ```bash
 curl -X POST "https://kauth.kakao.com/oauth/token" \
   -H "Content-Type: application/x-www-form-urlencoded;charset=utf-8" \
   --data-urlencode "grant_type=authorization_code" \
-  --data-urlencode "client_id=<REST_API_키>" \
-  --data-urlencode "client_secret=<Client_Secret, 있으면>" \
+  --data-urlencode "client_id=<REST_API_KEY>" \
+  --data-urlencode "client_secret=<Client_Secret, if any>" \
   --data-urlencode "redirect_uri=<Redirect_URI>" \
-  --data-urlencode "code=<복사한 code>"
+  --data-urlencode "code=<copied code>"
 ```
 
-응답의 `refresh_token`을 아래 GitHub secret에 등록합니다.
+Register the `refresh_token` from the response as the GitHub secret below.
 
-### 3. GitHub Secrets 등록
+### 3. Register GitHub Secrets
 
 - `KAKAO_REST_API_KEY`
-- `KAKAO_CLIENT_SECRET` (Client Secret을 켰다면)
-- `KAKAO_REFRESH_TOKEN` (위에서 발급받은 값)
+- `KAKAO_CLIENT_SECRET` (if Client Secret is enabled)
+- `KAKAO_REFRESH_TOKEN` (the value issued above)
 
-### 참고
+### Notes
 
-- `refresh_token`은 발급 후 약 60일 뒤 만료됩니다. 만료되면 "Send Kakao
-  daily summary" 스텝만 실패(warning)하고 나머지는 정상 동작하니, 그때
-  2번 과정을 다시 밟아 `KAKAO_REFRESH_TOKEN`을 갱신하세요.
-- 메시지 본문은 `build_kakao_summary.py`가 그날 `portfolio_analysis.summary`
-  와 `top_pick`(있으면)을 조합해서 만듭니다. 형식을 바꾸고 싶으면 이
-  스크립트를 수정하세요.
+- The `refresh_token` expires roughly 60 days after issuance. When it
+  expires, only the "Send Kakao daily summary" step fails (as a
+  warning) while everything else keeps working normally — just redo
+  step 2 to refresh `KAKAO_REFRESH_TOKEN`.
+- The message body is assembled by `build_kakao_summary.py` from that
+  day's `portfolio_analysis.summary` and `top_pick` (if any). Edit that
+  script if you want to change the format.
