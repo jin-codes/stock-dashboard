@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Kakao '나에게 보내기' API에 넣을 template_object JSON을 만든다.
+"""Build the template_object JSON for the Kakao "message to me" API.
 
-daily-analysis.yml의 "Send Kakao daily summary" 스텝에서 사용. YAML
-run 블록 안에 파이썬 코드를 직접 인라인하면 들여쓰기 때문에 YAML/파이썬
-양쪽에서 문법 오류가 나기 쉬워서, 별도 스크립트로 분리했다.
+Used by the "Send Kakao daily summary" step in daily-analysis.yml. Inlining
+Python directly in a YAML run block gets fragile fast (indentation trips up
+both YAML and Python), so this is split out into its own script.
 
-/tmp/kakao_message.txt (build_kakao_summary.py가 만든 메시지)를 읽고,
-REPO_URL 환경변수와 합쳐 /tmp/template_object.json으로 저장한다.
+Reads /tmp/kakao_message.txt (the message built by build_kakao_summary.py),
+combines it with the REPO_URL environment variable, and writes the result
+to /tmp/template_object.json.
 """
 import json
 import os

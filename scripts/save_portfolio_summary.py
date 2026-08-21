@@ -14,8 +14,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--date", required=True, help="YYYY-MM-DD")
     parser.add_argument("--summary", required=True)
-    parser.add_argument("--top-pick", help="관심종목 중 오늘의 최선호주 티커 (매수 신호가 하나도 없으면 생략)")
-    parser.add_argument("--top-pick-reason", help="최선호주 선정 이유 (1~2문장)")
+    parser.add_argument("--top-pick", help="Today's top pick ticker among the watchlist (omit if there are no buy signals)")
+    parser.add_argument("--top-pick-reason", help="Why this ticker was picked (1-2 sentences)")
     args = parser.parse_args()
 
     row = {"date": args.date, "summary": args.summary, "top_pick": args.top_pick, "top_pick_reason": args.top_pick_reason}

@@ -18,6 +18,8 @@ Claude Code (plus GitHub Actions) perform the daily automated analysis.
     history, used for the dashboard's intraday chart)
   - `0008_portfolio_top_pick.sql`: adds `top_pick`, `top_pick_reason` to
     `portfolio_analysis` (the day's top pick among watchlist tickers)
+  - `0009_english_signals.sql`: translates the `signal` taxonomy from
+    Korean literals to English ones (e.g. `hold`, `buy`, `sell`)
 - `scripts/` — Python scripts
   - `fetch_prices.py` — fetches prices via yfinance, saves to
     `daily_snapshots` (daily) and `intraday_snapshots` (10-minute history)

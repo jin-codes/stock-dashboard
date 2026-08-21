@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>포트폴리오 대시보드</title>
+<title>Portfolio Dashboard</title>
 <link rel="icon" type="image/png" href="favicon.png" />
 <style>
   :root {
@@ -369,15 +369,15 @@
 
 <div id="gate">
   <form id="gate-form">
-    <h1>포트폴리오 대시보드</h1>
-    <input type="password" id="pw" placeholder="비밀번호" autofocus />
-    <p class="error" id="gate-error" style="display:none">비밀번호가 틀렸습니다</p>
-    <button type="submit">입장</button>
+    <h1>Portfolio Dashboard</h1>
+    <input type="password" id="pw" placeholder="Password" autofocus />
+    <p class="error" id="gate-error" style="display:none">Incorrect password</p>
+    <button type="submit">Enter</button>
   </form>
 </div>
 
 <main id="app">
-  <h1 class="title">포트폴리오 대시보드</h1>
+  <h1 class="title">Portfolio Dashboard</h1>
   <div id="portfolio-chart"></div>
   <div id="warn-banner"></div>
   <div id="portfolio-summary"></div>
@@ -385,17 +385,17 @@
   <div class="cards" id="cards"></div>
 
   <section>
-    <h2>보유 종목</h2>
+    <h2>Holdings</h2>
     <div id="holdings"></div>
   </section>
 
   <section>
-    <h2>관심 종목</h2>
+    <h2>Watchlist</h2>
     <div id="watchlist"></div>
   </section>
 
   <section>
-    <h2>매매 이력 (실현손익)</h2>
+    <h2>Trade History (Realized P&amp;L)</h2>
     <div id="trades"></div>
   </section>
 </main>
@@ -433,20 +433,20 @@ function toneClass(n) {
 }
 
 const SIGNAL_META = {
-  "추가매수": { emoji: "🟢", cls: "signal-add" },
-  "매수": { emoji: "🔵", cls: "signal-buy" },
-  "보유": { emoji: "⚪", cls: "signal-hold" },
-  "관찰필요": { emoji: "🟡", cls: "signal-watch" },
-  "비중축소": { emoji: "✂️", cls: "signal-trim" },
-  "추격매수금지": { emoji: "🟠", cls: "signal-block" },
-  "매수보류": { emoji: "🟠", cls: "signal-block" },
-  "매도": { emoji: "🔴", cls: "signal-sell" },
-  "긴급매도": { emoji: "🚨", cls: "signal-urgent" },
-  "관심제외": { emoji: "🗑️", cls: "signal-remove" },
+  add_more: { emoji: "🟢", cls: "signal-add", label: "Add more" },
+  buy: { emoji: "🔵", cls: "signal-buy", label: "Buy" },
+  hold: { emoji: "⚪", cls: "signal-hold", label: "Hold" },
+  watch: { emoji: "🟡", cls: "signal-watch", label: "Watch" },
+  trim: { emoji: "✂️", cls: "signal-trim", label: "Trim" },
+  avoid_chasing: { emoji: "🟠", cls: "signal-block", label: "Don't chase" },
+  buy_wait: { emoji: "🟠", cls: "signal-block", label: "Wait to buy" },
+  sell: { emoji: "🔴", cls: "signal-sell", label: "Sell" },
+  urgent_sell: { emoji: "🚨", cls: "signal-urgent", label: "Urgent sell" },
+  drop_watch: { emoji: "🗑️", cls: "signal-remove", label: "Drop" },
 };
 function signalBadge(signal) {
-  const meta = SIGNAL_META[signal] || { emoji: "⚪", cls: "signal-hold" };
-  return `<span class="signal ${meta.cls}">${meta.emoji} ${signal}</span>`;
+  const meta = SIGNAL_META[signal] || { emoji: "⚪", cls: "signal-hold", label: signal };
+  return `<span class="signal ${meta.cls}">${meta.emoji} ${meta.label}</span>`;
 }
 
 let historySeq = 0;
@@ -518,12 +518,12 @@ async function loadDashboard() {
 }
 
 const SIGNAL_SEVERITY = {
-  "긴급매도": 0,
-  "매도": 1,
-  "비중축소": 2,
-  "관찰필요": 3,
-  "추격매수금지": 4,
-  "관심제외": 5,
+  urgent_sell: 0,
+  sell: 1,
+  trim: 2,
+  watch: 3,
+  avoid_chasing: 4,
+  drop_watch: 5,
 };
 
 function renderWarnBanner(tickers, analysisHistory) {
@@ -543,7 +543,7 @@ function renderWarnBanner(tickers, analysisHistory) {
 
   el.innerHTML = `
     <div class="warn-banner">
-      <div class="wb-label">⚠️ 지금 주의 필요 (${warnings.length})</div>
+      <div class="wb-label">⚠️ Needs attention now (${warnings.length})</div>
       ${warnings
         .map(
           (w) => `
@@ -611,7 +611,7 @@ function renderPortfolioChart(holdings, snapshots, intraday) {
       .sort()
       .map((ts) => {
         const { value, coverage } = portfolioValueAt(qtyByTicker, byTs[ts]);
-        const time = new Date(ts).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+        const time = new Date(ts).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
         return { x: ts, label: `${latestDate} ${time}`, value, coverage, date: latestDate };
       })
       .filter((p) => p.coverage > 0);
@@ -625,8 +625,8 @@ function renderPortfolioChart(holdings, snapshots, intraday) {
   if (points.length < 2) {
     el.innerHTML = `
       <div class="chart-wrap">
-        <div class="chart-label">📈 포트폴리오 가치 추이</div>
-        <div class="chart-note">차트를 그리려면 며칠치 데이터가 더 필요해요 (매일 자동 수집 중)</div>
+        <div class="chart-label">📈 Portfolio value over time</div>
+        <div class="chart-note">Need a few more days of data to draw a chart (collected automatically every day)</div>
       </div>
     `;
     return;
@@ -668,7 +668,7 @@ function renderPortfolioChart(holdings, snapshots, intraday) {
 
   el.innerHTML = `
     <div class="chart-wrap">
-      <div class="chart-label">📈 포트폴리오 가치 추이 · ${rangeLabel}</div>
+      <div class="chart-label">📈 Portfolio value over time · ${rangeLabel}</div>
       <div class="value ${toneClass(last - first)}" style="font-size:20px;">$${fmt(last)} <span style="font-size:13px; font-weight:600;">(${fmtPct(changePct)})</span></div>
       <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
         ${gridLines
@@ -685,7 +685,7 @@ function renderPortfolioChart(holdings, snapshots, intraday) {
           .map((c, i) => (i === 0 || i === coords.length - 1 ? `<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="3" fill="${color}" />` : ""))
           .join("")}
       </svg>
-      <div class="chart-note">현재 보유 수량 기준으로 과거 가격을 소급 계산한 값입니다 (일별 데이터 + 오늘은 10분 단위, 보유 시작일 이전 변화는 미반영).</div>
+      <div class="chart-note">Retroactively calculated from historical prices using current holding quantities (daily data, plus 10-minute intervals for today; doesn't account for changes before each position's start date).</div>
     </div>
   `;
 }
@@ -711,7 +711,7 @@ function renderSignalChanges(tickers, analysisHistory) {
 
   el.innerHTML = `
     <div class="signal-changes">
-      <div class="sc-label">🔁 오늘 바뀐 신호 (${changes.length})</div>
+      <div class="sc-label">🔁 Signals changed today (${changes.length})</div>
       ${changes
         .map(
           ({ ticker, change }) => `
@@ -738,17 +738,17 @@ function renderPortfolioSummary(summaries) {
   const historyId = `ps-history`;
   el.innerHTML = `
     <div class="portfolio-summary">
-      <div class="ps-label">📊 포트폴리오 분석 · ${latest.date}</div>
+      <div class="ps-label">📊 Portfolio analysis · ${latest.date}</div>
       <div>${latest.summary}</div>
       ${latest.top_pick ? `
         <div class="top-pick">
-          <span class="tp-label">⭐ 오늘의 최선호주</span>
+          <span class="tp-label">⭐ Today's top pick</span>
           <span class="tp-ticker">${latest.top_pick}</span>
           ${latest.top_pick_reason ? `<div class="tp-reason">${latest.top_pick_reason}</div>` : ""}
         </div>
       ` : ""}
       ${rest.length > 0 ? `
-        <button class="history-toggle" onclick="document.getElementById('${historyId}').classList.toggle('open')">지난 분석 기록 보기 (${rest.length})</button>
+        <button class="history-toggle" onclick="document.getElementById('${historyId}').classList.toggle('open')">Show past analyses (${rest.length})</button>
         <div class="history-list" id="${historyId}">
           ${rest.map((s) => `
             <div class="history-item">
@@ -797,30 +797,30 @@ function renderCards(holdings, latestSnapshot, trades) {
   const cards = document.getElementById("cards");
   cards.innerHTML = `
     <div class="card">
-      <div class="label">총 평가금액</div>
+      <div class="label">Total market value</div>
       <div class="value">$${fmt(totalValue)}</div>
     </div>
     <div class="card">
-      <div class="label">오늘 손익</div>
+      <div class="label">Today's P&amp;L</div>
       <div class="value ${toneClass(totalTodayPnl)}">${fmtSigned(totalTodayPnl)}</div>
       <div class="subvalue ${toneClass(totalTodayPnl)}">${fmtPct(totalTodayPnlPct)}</div>
     </div>
     <div class="card">
-      <div class="label">평가 손익 (미실현)</div>
+      <div class="label">Unrealized P&amp;L</div>
       <div class="value ${toneClass(totalPnl)}">${fmtSigned(totalPnl)}</div>
       <div class="subvalue ${toneClass(totalPnl)}">${fmtPct(totalPnlPct)}</div>
     </div>
     <div class="card">
-      <div class="label">실현 손익</div>
+      <div class="label">Realized P&amp;L</div>
       <div class="value ${toneClass(totalRealizedPnl)}">${fmtSigned(totalRealizedPnl)}</div>
-      <div class="subvalue">누적 매도 ${trades.length}건</div>
+      <div class="subvalue">${trades.length} trades total</div>
     </div>
     <div class="card">
-      <div class="label">오늘 상승 상위</div>
+      <div class="label">Top gainer today</div>
       <div class="value up">${topGainer ? `${topGainer.ticker} ${fmtPct(topGainer.changePct)}` : "-"}</div>
     </div>
     <div class="card">
-      <div class="label">오늘 하락 상위</div>
+      <div class="label">Top loser today</div>
       <div class="value down">${topLoser ? `${topLoser.ticker} ${fmtPct(topLoser.changePct)}` : "-"}</div>
     </div>
   `;
@@ -829,7 +829,7 @@ function renderCards(holdings, latestSnapshot, trades) {
 function analysisSection(ticker, analysisHistory) {
   const hist = analysisHistory[ticker] || [];
   if (hist.length === 0) {
-    return `<div class="analysis-block"><div class="no-analysis">아직 분석 결과가 없습니다</div></div>`;
+    return `<div class="analysis-block"><div class="no-analysis">No analysis yet</div></div>`;
   }
   const [latest, ...rest] = hist;
   const changed = signalChanged(ticker, analysisHistory);
@@ -838,12 +838,12 @@ function analysisSection(ticker, analysisHistory) {
   return `
     <div class="analysis-block">
       <div class="analysis-head">
-        <span>${signalBadge(latest.signal)}${changed ? ` <span class="changed-tag">(어제: ${changed.prev.signal})</span>` : ""}</span>
+        <span>${signalBadge(latest.signal)}${changed ? ` <span class="changed-tag">(yesterday: ${(SIGNAL_META[changed.prev.signal] || {}).label || changed.prev.signal})</span>` : ""}</span>
         <span class="analysis-date">${latest.date}</span>
       </div>
       ${latest.reasoning ? `<div class="reasoning">${latest.reasoning}</div>` : ""}
       ${rest.length > 0 ? `
-        <button class="history-toggle" onclick="document.getElementById('${historyId}').classList.toggle('open')">지난 분석 기록 보기 (${rest.length})</button>
+        <button class="history-toggle" onclick="document.getElementById('${historyId}').classList.toggle('open')">Show past analyses (${rest.length})</button>
         <div class="history-list" id="${historyId}">
           ${rest.map((a) => `
             <div class="history-item">
@@ -860,7 +860,7 @@ function analysisSection(ticker, analysisHistory) {
 function renderHoldings(holdings, latestSnapshot, analysisHistory) {
   const el = document.getElementById("holdings");
   if (holdings.length === 0) {
-    el.innerHTML = `<p class="empty">보유 종목이 없습니다</p>`;
+    el.innerHTML = `<p class="empty">No holdings</p>`;
     return;
   }
   el.innerHTML = holdings
@@ -884,21 +884,21 @@ function renderHoldings(holdings, latestSnapshot, analysisHistory) {
           <div class="stock-head">
             <div>
               <div class="ticker">${h.ticker}</div>
-              <div class="sub">${h.quantity}주 · 평단 ${fmt(h.avg_cost)}</div>
+              <div class="sub">${h.quantity} sh · avg cost ${fmt(h.avg_cost)}</div>
             </div>
             <div class="price-block">
               <div class="price">${hasPrice ? fmt(price) : "-"}</div>
-              <div class="pct ${toneClass(changePct)}">${changePct !== null && changePct !== undefined ? fmtPct(changePct) : "데이터 없음"}</div>
+              <div class="pct ${toneClass(changePct)}">${changePct !== null && changePct !== undefined ? fmtPct(changePct) : "No data"}</div>
             </div>
           </div>
           ${hasPrice ? `
             <div class="metrics">
               <div>
-                <div class="m-label">오늘 손익</div>
+                <div class="m-label">Today's P&amp;L</div>
                 <div class="m-value ${toneClass(todayPnl)}">${fmtSigned(todayPnl)}</div>
               </div>
               <div>
-                <div class="m-label">평가 손익</div>
+                <div class="m-label">Unrealized P&amp;L</div>
                 <div class="m-value ${toneClass(totalPnl)}">${fmtSigned(totalPnl)}${totalPnlPct !== null ? ` (${fmtPct(totalPnlPct)})` : ""}</div>
               </div>
             </div>
@@ -913,7 +913,7 @@ function renderHoldings(holdings, latestSnapshot, analysisHistory) {
 function renderWatchlist(watchlist, latestSnapshot, analysisHistory) {
   const el = document.getElementById("watchlist");
   if (watchlist.length === 0) {
-    el.innerHTML = `<p class="empty">관심 종목이 없습니다</p>`;
+    el.innerHTML = `<p class="empty">No watchlist entries</p>`;
     return;
   }
   el.innerHTML = watchlist
@@ -921,16 +921,16 @@ function renderWatchlist(watchlist, latestSnapshot, analysisHistory) {
       const snap = latestSnapshot[w.ticker];
       const price = snap ? snap.price : null;
 
-      let targetInfo = "목표가 미설정";
+      let targetInfo = "No target price set";
       let targetHit = false;
       if (w.target_price && price !== null) {
         const diffPct = ((price - w.target_price) / w.target_price) * 100;
         targetHit = price <= w.target_price;
         targetInfo = targetHit
-          ? `목표가 ${fmt(w.target_price)}`
-          : `목표가 ${fmt(w.target_price)} · 목표가까지 +${diffPct.toFixed(1)}%`;
+          ? `Target ${fmt(w.target_price)}`
+          : `Target ${fmt(w.target_price)} · +${diffPct.toFixed(1)}% to target`;
       } else if (w.target_price) {
-        targetInfo = `목표가 ${fmt(w.target_price)}`;
+        targetInfo = `Target ${fmt(w.target_price)}`;
       }
 
       return `
@@ -939,11 +939,11 @@ function renderWatchlist(watchlist, latestSnapshot, analysisHistory) {
             <div>
               <div class="ticker">${w.ticker}</div>
               <div class="sub">${targetInfo}</div>
-              ${targetHit ? `<div class="target-hit">🎯 목표가 도달</div>` : ""}
+              ${targetHit ? `<div class="target-hit">🎯 Target reached</div>` : ""}
             </div>
             <div class="price-block">
               <div class="price">${price !== null ? fmt(price) : "-"}</div>
-              <div class="pct ${toneClass(snap?.change_pct)}">${snap && snap.change_pct !== null ? fmtPct(snap.change_pct) : "데이터 없음"}</div>
+              <div class="pct ${toneClass(snap?.change_pct)}">${snap && snap.change_pct !== null ? fmtPct(snap.change_pct) : "No data"}</div>
             </div>
           </div>
           ${analysisSection(w.ticker, analysisHistory)}
@@ -956,7 +956,7 @@ function renderWatchlist(watchlist, latestSnapshot, analysisHistory) {
 function renderTrades(trades) {
   const el = document.getElementById("trades");
   if (trades.length === 0) {
-    el.innerHTML = `<p class="empty">매도 이력이 없습니다</p>`;
+    el.innerHTML = `<p class="empty">No trade history</p>`;
     return;
   }
   el.innerHTML = trades
@@ -966,7 +966,7 @@ function renderTrades(trades) {
         <div class="trade-row">
           <div>
             <div class="tr-ticker">${t.ticker}</div>
-            <div class="tr-sub">${t.sell_date} · ${t.quantity}주 · ${fmt(t.cost_basis)} → ${fmt(t.sell_price)}${t.note ? ` · ${t.note}` : ""}</div>
+            <div class="tr-sub">${t.sell_date} · ${t.quantity} sh · ${fmt(t.cost_basis)} → ${fmt(t.sell_price)}${t.note ? ` · ${t.note}` : ""}</div>
           </div>
           <div>
             <div class="tr-pnl ${toneClass(t.realized_pnl)}">${fmtSigned(t.realized_pnl)}</div>

@@ -47,18 +47,20 @@ jobs:
           claude -p "/daily-analysis" --dangerously-skip-permissions
 
       # ---------------------------------------------------------------
-      # 카카오톡 "나와의 채팅"으로 포트폴리오 요약 발송
+      # Send the portfolio summary via KakaoTalk "message to me"
       #
-      # 필요한 GitHub Secrets:
-      #   KAKAO_REST_API_KEY   - Kakao Developers > 앱 키 > REST API 키
-      #   KAKAO_CLIENT_SECRET  - Kakao Developers > 보안 > Client Secret
-      #                          (비활성화했다면 이 secret 자체를 만들지 않아도 됨)
-      #   KAKAO_REFRESH_TOKEN  - 최초 1회 OAuth 인가 코드 플로우로 발급받은 값
+      # Required GitHub Secrets:
+      #   KAKAO_REST_API_KEY   - Kakao Developers > App Keys > REST API key
+      #   KAKAO_CLIENT_SECRET  - Kakao Developers > Security > Client Secret
+      #                          (skip this secret if it's disabled)
+      #   KAKAO_REFRESH_TOKEN  - issued once via the OAuth authorization
+      #                          code flow
       #
-      # 주의: refresh_token은 발급 후 약 2개월 뒤 만료됩니다. 만료되면 아래
-      # 단계가 실패하니, 그때 다시 로그인해서 KAKAO_REFRESH_TOKEN 값을
-      # 갱신해주세요 (continue-on-error라 daily-analysis 자체는 계속 성공
-      # 처리됩니다 - 실패는 Actions 로그의 warning으로만 표시됨).
+      # Note: the refresh_token expires roughly 2 months after issuance.
+      # When it expires, the step below fails - log in again and refresh
+      # KAKAO_REFRESH_TOKEN (continue-on-error means daily-analysis itself
+      # still succeeds - the failure only shows as a warning in the
+      # Actions log).
       # ---------------------------------------------------------------
       - name: Build Kakao summary message
         continue-on-error: true
@@ -83,7 +85,7 @@ jobs:
           ACCESS_TOKEN=$(python -c "import json; print(json.load(open('/tmp/token_response.json')).get('access_token',''))")
 
           if [ -z "$ACCESS_TOKEN" ]; then
-            echo "::warning::카카오 액세스 토큰 갱신 실패 - refresh_token이 만료되었을 수 있습니다. 새로 로그인해서 KAKAO_REFRESH_TOKEN을 갱신하세요."
+            echo "::warning::Failed to refresh the Kakao access token - refresh_token may have expired. Log in again and refresh KAKAO_REFRESH_TOKEN."
             cat /tmp/token_response.json
             exit 1
           fi
@@ -96,4 +98,4 @@ jobs:
             --data-urlencode "template_object@/tmp/template_object.json" \
             -o /tmp/send_response.json
 
-          grep -q '"result_code":0' /tmp/send_response.json || { echo "::warning::카카오 메시지 발송 실패"; cat /tmp/send_response.json; exit 1; }
+          grep -q '"result_code":0' /tmp/send_response.json || { echo "::warning::Failed to send the Kakao message"; cat /tmp/send_response.json; exit 1; }

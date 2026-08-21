@@ -55,7 +55,7 @@ def main():
     client = get_client()
     tickers = get_tickers(client)
     if not tickers:
-        print("holdings/watchlist에 티커가 없습니다.", file=sys.stderr)
+        print("No tickers in holdings/watchlist.", file=sys.stderr)
         return
 
     # Shared timestamp for this whole run, so every ticker's intraday row
@@ -68,10 +68,10 @@ def main():
         try:
             snap = fetch_one(ticker)
         except Exception as e:
-            print(f"  {ticker}: 조회 실패 ({e})", file=sys.stderr)
+            print(f"  {ticker}: fetch failed ({e})", file=sys.stderr)
             continue
         if snap is None:
-            print(f"  {ticker}: 데이터 없음", file=sys.stderr)
+            print(f"  {ticker}: no data", file=sys.stderr)
             continue
 
         client.table("daily_snapshots").upsert(snap, on_conflict="ticker,date").execute()

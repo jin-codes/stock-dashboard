@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """CLI for reading and editing holdings/watchlist/daily_analysis.
 Meant to be invoked directly by a Claude Code session from natural language
-requests, e.g. "AAPL 10주 평단 150에 추가해줘" -> holdings add.
+requests, e.g. "add 10 shares of AAPL at avg cost 150" -> holdings add.
 
 Examples:
   python scripts/portfolio.py holdings list
@@ -63,7 +63,7 @@ def cmd_holdings_update(client, args):
     if args.thesis is not None:
         updates["thesis"] = args.thesis
     if not updates:
-        print("변경할 필드가 없습니다 (--quantity, --avg-cost, --first-buy-date, --thesis 중 하나 필요)", file=sys.stderr)
+        print("No fields to update (need one of --quantity, --avg-cost, --first-buy-date, --thesis)", file=sys.stderr)
         sys.exit(1)
     print_rows(
         client.table("holdings").update(updates).eq("ticker", args.ticker.upper()).execute().data
@@ -80,13 +80,13 @@ def cmd_holdings_sell(client, args):
         client.table("holdings").select("*").eq("ticker", ticker).limit(1).execute().data
     )
     if not holding:
-        print(f"{ticker}는 보유 종목이 아닙니다", file=sys.stderr)
+        print(f"{ticker} is not in holdings", file=sys.stderr)
         sys.exit(1)
     holding = holding[0]
 
     if args.quantity > holding["quantity"] + EPSILON:
         print(
-            f"매도 수량({args.quantity})이 보유 수량({holding['quantity']})보다 많습니다",
+            f"Sell quantity ({args.quantity}) exceeds held quantity ({holding['quantity']})",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -107,7 +107,7 @@ def cmd_holdings_sell(client, args):
     remaining = holding["quantity"] - args.quantity
     if remaining <= EPSILON:
         holding_result = client.table("holdings").delete().eq("ticker", ticker).execute()
-        status = "전량 매도, holdings에서 제거됨"
+        status = "Fully sold, removed from holdings"
     else:
         holding_result = (
             client.table("holdings")
@@ -115,7 +115,7 @@ def cmd_holdings_sell(client, args):
             .eq("ticker", ticker)
             .execute()
         )
-        status = f"부분 매도, 잔여 수량 {remaining}"
+        status = f"Partially sold, {remaining} remaining"
 
     print(json.dumps({"trade": trade_result.data, "status": status}, indent=2, ensure_ascii=False, default=str))
 
@@ -140,7 +140,7 @@ def cmd_watchlist_update(client, args):
     if args.thesis is not None:
         updates["thesis"] = args.thesis
     if not updates:
-        print("변경할 필드가 없습니다 (--target-price, --thesis 중 하나 필요)", file=sys.stderr)
+        print("No fields to update (need one of --target-price, --thesis)", file=sys.stderr)
         sys.exit(1)
     print_rows(
         client.table("watchlist").update(updates).eq("ticker", args.ticker.upper()).execute().data
@@ -181,7 +181,7 @@ def _latest_prices(client, tickers):
 def cmd_report_summary(client, args):
     holdings = client.table("holdings").select("*").order("ticker").execute().data
     if not holdings:
-        print("보유 종목이 없습니다", file=sys.stderr)
+        print("No holdings", file=sys.stderr)
         return
     prices = _latest_prices(client, [h["ticker"] for h in holdings])
 
@@ -208,7 +208,7 @@ def cmd_report_summary(client, args):
             row["unrealized_pnl_pct"] = round(unrealized_pnl / cost_basis * 100, 2) if cost_basis else None
             total_value += market_value
         else:
-            row["note"] = "daily_snapshots에 가격 없음 (fetch_prices.py 먼저 실행)"
+            row["note"] = "No price in daily_snapshots (run fetch_prices.py first)"
             total_value += cost_basis
         total_cost += cost_basis
         rows.append(row)
@@ -234,7 +234,7 @@ def cmd_report_summary(client, args):
 def cmd_report_watchlist(client, args):
     watchlist = client.table("watchlist").select("*").order("ticker").execute().data
     if not watchlist:
-        print("관심 종목이 없습니다", file=sys.stderr)
+        print("No watchlist entries", file=sys.stderr)
         return
     prices = _latest_prices(client, [w["ticker"] for w in watchlist])
 
@@ -261,7 +261,7 @@ def cmd_trades_list(client, args):
     rows = query.execute().data
     total_realized = sum(r["realized_pnl"] for r in rows)
     print_rows(rows)
-    print(f"\n총 실현손익 (표시된 {len(rows)}건 기준): {total_realized:+.2f}", file=sys.stderr)
+    print(f"\nTotal realized P&L (based on {len(rows)} shown trades): {total_realized:+.2f}", file=sys.stderr)
 
 
 def build_parser():
@@ -296,7 +296,7 @@ def build_parser():
     p.add_argument("ticker")
     p.add_argument("--quantity", type=float, required=True)
     p.add_argument("--price", type=float, required=True)
-    p.add_argument("--date", help="YYYY-MM-DD, 기본값 오늘")
+    p.add_argument("--date", help="YYYY-MM-DD, defaults to today")
     p.add_argument("--note")
     p.set_defaults(func=cmd_holdings_sell)
 

@@ -13,6 +13,12 @@ Below are example fields to fill in. Write the actual content however
 you like, but keeping this structure is recommended — `DAILY_ANALYSIS.md`
 refers to it.
 
+- **Analysis language**: (e.g. `Korean`, `English`, `Japanese` — the
+  language `reasoning`, the portfolio `summary`, and `top_pick_reason`
+  should be written in. This only controls the prose; the `signal`
+  values saved to the DB are always the fixed English literals defined
+  in `DAILY_ANALYSIS.md`, regardless of this setting. If omitted,
+  defaults to English.)
 - **Risk tolerance**: (e.g. value-investing preference / growth-stock
   preference / aggressive momentum-following — describe your own buying
   criteria concretely)

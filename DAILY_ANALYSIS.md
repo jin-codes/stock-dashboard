@@ -70,25 +70,32 @@ exists, but risk B also exists, and on balance X wins out").
    Combine the price move + news/earnings + thesis validity + whether
    anything materially changed since the prior day's analysis to decide
    on exactly one of the 10 signals below. You must use the literal
-   Korean value shown — it's enforced by a DB check constraint:
+   value shown — it's enforced by a DB check constraint:
 
    | signal (DB value) | meaning | mainly for |
    |---|---|---|
-   | 추가매수 | thesis reinforced, grounds to add to the position | holdings |
-   | 보유 | thesis still holds, no change, nothing notable | holdings |
-   | 관찰필요 | thesis mostly holds but there's an early warning sign (demand softening, margin pressure starting, etc.) — not sell-worthy yet but needs watching | holdings |
-   | 비중축소 | grounds for partial profit-taking / risk reduction, not a full exit (e.g. trimming part of a position that's run up too far) | holdings |
-   | 매도 | thesis broken, grounds to exit the position | holdings |
-   | 긴급매도 | serious bad news (guidance withdrawn, accounting issue, loss of a key customer, etc.) warranting immediate exit — more urgent than 매도, don't overuse | holdings |
-   | 추격매수금지 | an existing position has run up sharply short-term; now isn't the time to add more — wait and watch | holdings |
-   | 매수 | grounds for a new entry (hit target price, thesis confirmed, etc.) | watchlist |
-   | 매수보류 | thesis still holds but a short-term spike/uncertainty means now isn't the entry point — wait and watch | watchlist |
-   | 관심제외 | thesis never held or has fallen apart — better to drop it from the watchlist | watchlist |
+   | `add_more` | thesis reinforced, grounds to add to the position | holdings |
+   | `hold` | thesis still holds, no change, nothing notable | holdings |
+   | `watch` | thesis mostly holds but there's an early warning sign (demand softening, margin pressure starting, etc.) — not sell-worthy yet but needs watching | holdings |
+   | `trim` | grounds for partial profit-taking / risk reduction, not a full exit (e.g. trimming part of a position that's run up too far) | holdings |
+   | `sell` | thesis broken, grounds to exit the position | holdings |
+   | `urgent_sell` | serious bad news (guidance withdrawn, accounting issue, loss of a key customer, etc.) warranting immediate exit — more urgent than `sell`, don't overuse | holdings |
+   | `avoid_chasing` | an existing position has run up sharply short-term; now isn't the time to add more — wait and watch | holdings |
+   | `buy` | grounds for a new entry (hit target price, thesis confirmed, etc.) | watchlist |
+   | `buy_wait` | thesis still holds but a short-term spike/uncertainty means now isn't the entry point — wait and watch | watchlist |
+   | `drop_watch` | thesis never held or has fallen apart — better to drop it from the watchlist | watchlist |
 
-   `관찰필요` is specifically the "fundamental warning" signal that
+   `watch` is specifically the "fundamental warning" signal that
    `INVESTMENT_PROFILE.md` explicitly calls for — if there's a warning
-   sign but it doesn't rise to a sell, don't flatten it into `보유`;
-   use `관찰필요`.
+   sign but it doesn't rise to a sell, don't flatten it into `hold`;
+   use `watch`.
+
+   **The signal value itself must always be the exact English literal
+   above (enforced by the DB).** Everything you write in prose —
+   `reasoning`, the portfolio `summary`, `top_pick_reason` — should be
+   written in whatever language `INVESTMENT_PROFILE.md` specifies (see
+   its "Analysis language" field). If that file doesn't exist or doesn't
+   specify a language, default to English.
 
 6. **Save**
    For each ticker:
@@ -114,10 +121,10 @@ exists, but risk B also exists, and on balance X wins out").
      out explicitly whether there was any sign of fundamental damage
      across it (if not, say so explicitly — "no notable warnings")
    - What today's signal distribution suggests (e.g. lots of
-     추격매수금지/매수보류 might mean "short-term overheated" — interpret it)
+     `avoid_chasing`/`buy_wait` might mean "short-term overheated" — interpret it)
 
 8. **Pick the watchlist top pick**
-   Gather every watchlist ticker whose signal today is `매수` and compare
+   Gather every watchlist ticker whose signal today is `buy` and compare
    them.
    - If there are none, there's no top pick — save without
      `--top-pick`/`--top-pick-reason` in step 9.

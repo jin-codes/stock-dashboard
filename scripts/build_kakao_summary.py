@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""매일 아침 카카오톡 '나와의 채팅'으로 보낼 포트폴리오 요약 메시지를 만든다.
+"""Build the portfolio summary message sent every morning via KakaoTalk
+"Message to me".
 
-daily-analysis.yml (GitHub Actions, 매일 07:00 KST)가 그날 분석을 저장한 뒤
-읽어가는 용도. 오늘 날짜 데이터가 아직 없으면 (Actions가 아직 안 끝났거나
-실패한 경우) 가장 최근 날짜 데이터로 fallback 한다.
+Read by daily-analysis.yml (GitHub Actions, daily at 07:00 KST) after it
+saves that day's analysis. If today's date has no data yet (Actions hasn't
+finished, or failed), falls back to the most recent date available.
 
-200자 제한(카카오톡 나와의 채팅 도구 제약)에 맞춰 자르고, 최종 문자열만
-stdout에 출력한다.
+Truncates to a 200-char limit (a constraint of the KakaoTalk "message to
+me" tool) and prints only the final string to stdout.
 
 Usage:
   python scripts/build_kakao_summary.py [--date YYYY-MM-DD] [--max-len 200]
@@ -27,7 +28,7 @@ def fetch_portfolio_summary(client, date_str: str | None):
     if rows:
         return rows[0]
     if date_str:
-        # 요청한 날짜 데이터가 없으면 가장 최근 날짜로 fallback
+        # No data for the requested date, fall back to the most recent one
         rows = (
             client.table("portfolio_analysis")
             .select("date,summary,top_pick")
@@ -49,15 +50,15 @@ def truncate(text: str, max_len: int) -> str:
 def build_message(client, date_str: str | None, max_len: int) -> str:
     portfolio = fetch_portfolio_summary(client, date_str)
     if not portfolio:
-        return "포트폴리오 분석 데이터가 아직 없습니다. daily-analysis 실행 여부를 확인해주세요."
+        return "No portfolio analysis data yet. Check whether daily-analysis has run."
 
     actual_date = portfolio["date"]
     summary = portfolio["summary"] or ""
     top_pick = portfolio.get("top_pick") or ""
 
     date_label = dt.date.fromisoformat(actual_date).strftime("%m/%d")
-    header = f"[포트폴리오 {date_label}] "
-    tail = f" 최선호주: {top_pick}" if top_pick else ""
+    header = f"[Portfolio {date_label}] "
+    tail = f" Top pick: {top_pick}" if top_pick else ""
 
     budget_for_summary = max_len - len(header) - len(tail)
     summary_part = truncate(summary, budget_for_summary) if budget_for_summary < len(summary) else summary
@@ -67,7 +68,7 @@ def build_message(client, date_str: str | None, max_len: int) -> str:
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--date", help="YYYY-MM-DD (기본: 오늘, KST 기준)")
+    parser.add_argument("--date", help="YYYY-MM-DD (default: today, KST)")
     parser.add_argument("--max-len", type=int, default=MAX_LEN_DEFAULT)
     args = parser.parse_args()
 
